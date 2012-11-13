@@ -23,15 +23,16 @@
 /* Maximum channels is 64 even on 56Mode you have 64playbacks to matrix */
 #define HDSPM_MAX_CHANNELS      64
 
-enum hdspm_io_type {
+enum madifx_io_type {
 	MADI,
 	MADIface,
 	AIO,
 	AES32,
-	RayDAT
+	RayDAT,
+	MADIFX
 };
 
-enum hdspm_speed {
+enum madifx_speed {
 	ss,
 	ds,
 	qs
@@ -39,7 +40,7 @@ enum hdspm_speed {
 
 /* -------------------- IOCTL Peak/RMS Meters -------------------- */
 
-struct hdspm_peak_rms {
+struct madifx_peak_rms {
 	uint32_t input_peaks[64];
 	uint32_t playback_peaks[64];
 	uint32_t output_peaks[64];
@@ -53,11 +54,11 @@ struct hdspm_peak_rms {
 };
 
 #define SNDRV_HDSPM_IOCTL_GET_PEAK_RMS \
-	_IOR('H', 0x42, struct hdspm_peak_rms)
+	_IOR('H', 0x42, struct madifx_peak_rms)
 
 /* ------------ CONFIG block IOCTL ---------------------- */
 
-struct hdspm_config {
+struct madifx_config {
 	unsigned char pref_sync_ref;
 	unsigned char wordclock_sync_check;
 	unsigned char madi_sync_check;
@@ -72,18 +73,18 @@ struct hdspm_config {
 };
 
 #define SNDRV_HDSPM_IOCTL_GET_CONFIG \
-	_IOR('H', 0x41, struct hdspm_config)
+	_IOR('H', 0x41, struct madifx_config)
 
 /**
  * If there's a TCO (TimeCode Option) board installed,
  * there are further options and status data available.
- * The hdspm_ltc structure contains the current SMPTE
+ * The madifx_ltc structure contains the current SMPTE
  * timecode and some status information and can be
  * obtained via SNDRV_HDSPM_IOCTL_GET_LTC or in the
- * hdspm_status struct.
+ * madifx_status struct.
  **/
 
-enum hdspm_ltc_format {
+enum madifx_ltc_format {
 	format_invalid,
 	fps_24,
 	fps_25,
@@ -91,27 +92,27 @@ enum hdspm_ltc_format {
 	fps_30
 };
 
-enum hdspm_ltc_frame {
+enum madifx_ltc_frame {
 	frame_invalid,
 	drop_frame,
 	full_frame
 };
 
-enum hdspm_ltc_input_format {
+enum madifx_ltc_input_format {
 	ntsc,
 	pal,
 	no_video
 };
 
-struct hdspm_ltc {
+struct madifx_ltc {
 	unsigned int ltc;
 
-	enum hdspm_ltc_format format;
-	enum hdspm_ltc_frame frame;
-	enum hdspm_ltc_input_format input_format;
+	enum madifx_ltc_format format;
+	enum madifx_ltc_frame frame;
+	enum madifx_ltc_input_format input_format;
 };
 
-#define SNDRV_HDSPM_IOCTL_GET_LTC _IOR('H', 0x46, struct hdspm_mixer_ioctl)
+#define SNDRV_HDSPM_IOCTL_GET_LTC _IOR('H', 0x46, struct madifx_mixer_ioctl)
 
 /**
  * The status data reflects the device's current state
@@ -119,28 +120,28 @@ struct hdspm_ltc {
  * connection status.
  **/
 
-enum hdspm_sync {
-	hdspm_sync_no_lock = 0,
-	hdspm_sync_lock = 1,
-	hdspm_sync_sync = 2
+enum madifx_sync {
+	madifx_sync_no_lock = 0,
+	madifx_sync_lock = 1,
+	madifx_sync_sync = 2
 };
 
-enum hdspm_madi_input {
-	hdspm_input_optical = 0,
-	hdspm_input_coax = 1
+enum madifx_madi_input {
+	madifx_input_optical = 0,
+	madifx_input_coax = 1
 };
 
-enum hdspm_madi_channel_format {
-	hdspm_format_ch_64 = 0,
-	hdspm_format_ch_56 = 1
+enum madifx_madi_channel_format {
+	madifx_format_ch_64 = 0,
+	madifx_format_ch_56 = 1
 };
 
-enum hdspm_madi_frame_format {
-	hdspm_frame_48 = 0,
-	hdspm_frame_96 = 1
+enum madifx_madi_frame_format {
+	madifx_frame_48 = 0,
+	madifx_frame_96 = 1
 };
 
-enum hdspm_syncsource {
+enum madifx_syncsource {
 	syncsource_wc = 0,
 	syncsource_madi = 1,
 	syncsource_tco = 2,
@@ -148,28 +149,28 @@ enum hdspm_syncsource {
 	syncsource_none = 4
 };
 
-struct hdspm_status {
-	uint8_t card_type; /* enum hdspm_io_type */
-	enum hdspm_syncsource autosync_source;
+struct madifx_status {
+	uint8_t card_type; /* enum madifx_io_type */
+	enum madifx_syncsource autosync_source;
 
 	uint64_t card_clock;
 	uint32_t master_period;
 
 	union {
 		struct {
-			uint8_t sync_wc; /* enum hdspm_sync */
-			uint8_t sync_madi; /* enum hdspm_sync */
-			uint8_t sync_tco; /* enum hdspm_sync */
-			uint8_t sync_in; /* enum hdspm_sync */
-			uint8_t madi_input; /* enum hdspm_madi_input */
-			uint8_t channel_format; /* enum hdspm_madi_channel_format */
-			uint8_t frame_format; /* enum hdspm_madi_frame_format */
+			uint8_t sync_wc; /* enum madifx_sync */
+			uint8_t sync_madi; /* enum madifx_sync */
+			uint8_t sync_tco; /* enum madifx_sync */
+			uint8_t sync_in; /* enum madifx_sync */
+			uint8_t madi_input; /* enum madifx_madi_input */
+			uint8_t channel_format; /* enum madifx_madi_channel_format */
+			uint8_t frame_format; /* enum madifx_madi_frame_format */
 		} madi;
 	} card_specific;
 };
 
 #define SNDRV_HDSPM_IOCTL_GET_STATUS \
-	_IOR('H', 0x47, struct hdspm_status)
+	_IOR('H', 0x47, struct madifx_status)
 
 /**
  * Get information about the card and its add-ons.
@@ -177,15 +178,15 @@ struct hdspm_status {
 
 #define HDSPM_ADDON_TCO 1
 
-struct hdspm_version {
-	uint8_t card_type; /* enum hdspm_io_type */
+struct madifx_version {
+	uint8_t card_type; /* enum madifx_io_type */
 	char cardname[20];
 	unsigned int serial;
 	unsigned short firmware_rev;
 	int addons;
 };
 
-#define SNDRV_HDSPM_IOCTL_GET_VERSION _IOR('H', 0x48, struct hdspm_version)
+#define SNDRV_HDSPM_IOCTL_GET_VERSION _IOR('H', 0x48, struct madifx_version)
 
 /* ------------- get Matrix Mixer IOCTL --------------- */
 
@@ -201,29 +202,38 @@ struct hdspm_version {
    Ins to Outs mixer[out].in[in], Outstreams to Outs mixer[out].pb[pb] */
 
 #define HDSPM_MIXER_CHANNELS HDSPM_MAX_CHANNELS
+#define MADIFX_LIST_LENGTH 4096
+#define MADIFX_NUM_OUTPUT_GAINS 198 
 
-struct hdspm_channelfader {
+struct madifx_channelfader {
 	unsigned int in[HDSPM_MIXER_CHANNELS];
 	unsigned int pb[HDSPM_MIXER_CHANNELS];
 };
 
-struct hdspm_mixer {
-	struct hdspm_channelfader ch[HDSPM_MIXER_CHANNELS];
+struct madifx_mixer {
+	struct madifx_channelfader ch[HDSPM_MIXER_CHANNELS];
 };
 
-struct hdspm_mixer_ioctl {
-	struct hdspm_mixer *mixer;
+/* FIXME: maybe move to .c file */
+struct madifx_newmixer {
+	uint32_t listVol[MADIFX_LIST_LENGTH];
+	uint32_t listCh[MADIFX_LIST_LENGTH];
+	uint32_t output_gain[MADIFX_NUM_OUTPUT_GAINS];
+};
+
+struct madifx_mixer_ioctl {
+	struct madifx_mixer *mixer;
 };
 
 /* use indirect access due to the limit of ioctl bit size */
-#define SNDRV_HDSPM_IOCTL_GET_MIXER _IOR('H', 0x44, struct hdspm_mixer_ioctl)
+#define SNDRV_HDSPM_IOCTL_GET_MIXER _IOR('H', 0x44, struct madifx_mixer_ioctl)
 
 /* typedefs for compatibility to user-space */
-typedef struct hdspm_peak_rms hdspm_peak_rms_t;
-typedef struct hdspm_config_info hdspm_config_info_t;
-typedef struct hdspm_version hdspm_version_t;
-typedef struct hdspm_channelfader snd_hdspm_channelfader_t;
-typedef struct hdspm_mixer hdspm_mixer_t;
+typedef struct madifx_peak_rms madifx_peak_rms_t;
+typedef struct madifx_config_info madifx_config_info_t;
+typedef struct madifx_version madifx_version_t;
+typedef struct madifx_channelfader snd_madifx_channelfader_t;
+typedef struct madifx_mixer madifx_mixer_t;
 
 
 #endif
