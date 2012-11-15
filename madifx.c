@@ -970,6 +970,8 @@ struct hdspm {
 
 	unsigned int serial;
 
+	int speedmode = ss;
+
 	struct madifx_peak_rms peak_rms;
 };
 
@@ -1582,6 +1584,7 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 		hdspm->max_channels_out = hdspm->ss_out_channels;
 		hdspm->port_names_in = hdspm->port_names_in_ss;
 		hdspm->port_names_out = hdspm->port_names_out_ss;
+		hdspm->speedmode = ss;
 	} else if (rate <= 96000) {
 		hdspm->channel_map_in = hdspm->channel_map_in_ds;
 		hdspm->channel_map_out = hdspm->channel_map_out_ds;
@@ -1589,6 +1592,7 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 		hdspm->max_channels_out = hdspm->ds_out_channels;
 		hdspm->port_names_in = hdspm->port_names_in_ds;
 		hdspm->port_names_out = hdspm->port_names_out_ds;
+		hdspm->speedmode = ds;
 	} else {
 		hdspm->channel_map_in = hdspm->channel_map_in_qs;
 		hdspm->channel_map_out = hdspm->channel_map_out_qs;
@@ -1596,6 +1600,7 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 		hdspm->max_channels_out = hdspm->qs_out_channels;
 		hdspm->port_names_in = hdspm->port_names_in_qs;
 		hdspm->port_names_out = hdspm->port_names_out_qs;
+		hdspm->speedmode = qs;
 	}
 
 	if (not_set != 0)
@@ -5674,10 +5679,46 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 			return -EINVAL;
 		}
 
-		if (hdspm->channel_map_out[info->channel] < 0) {
-			snd_printk(KERN_INFO "snd_madifx_channel_info: output channel %d mapped out\n", info->channel);
-			return -EINVAL;
-		}
+        switch (hdspm->speedmode) {
+            case ss:
+                /* MADI FX Playback channel map
+                   Outputstream 0 with 2 channels at byte offset 0          AES
+                   Outputstream 1 with 8 channels at byte offset 131072     MADI
+                   Outputstream 2 with 8 channels at byte offset 393216
+                   Outputstream 3 with 8 channels at byte offset 655360
+                   Outputstream 4 with 8 channels at byte offset 917504
+                   Outputstream 5 with 8 channels at byte offset 1179648
+                   Outputstream 6 with 8 channels at byte offset 1441792
+                   Outputstream 7 with 8 channels at byte offset 1703936
+                   Outputstream 8 with 8 channels at byte offset 1966080
+                   Outputstream 9 with 8 channels at byte offset 2228224
+                   Outputstream 10 with 8 channels at byte offset 2490368
+                   Outputstream 11 with 8 channels at byte offset 2752512
+                   Outputstream 12 with 8 channels at byte offset 3014656
+                   Outputstream 13 with 8 channels at byte offset 3276800
+                   Outputstream 14 with 8 channels at byte offset 3538944
+                   Outputstream 15 with 8 channels at byte offset 3801088
+                   Outputstream 16 with 8 channels at byte offset 4063232
+                   Outputstream 17 with 8 channels at byte offset 4325376
+                   Outputstream 18 with 8 channels at byte offset 4587520
+                   Outputstream 19 with 8 channels at byte offset 4849664
+                   Outputstream 20 with 8 channels at byte offset 5111808
+                   Outputstream 21 with 8 channels at byte offset 5373952
+                   Outputstream 22 with 8 channels at byte offset 5636096
+                   Outputstream 23 with 8 channels at byte offset 5898240
+                   Outputstream 24 with 8 channels at byte offset 6160384
+                   Outputstream 25 with 2 channels at byte offset 65536     Phones
+                   */
+                info->offset = (info->channel < 2) ?
+                    0 : ((info->channel > 193) ? 65536 :
+                    131072 + 8 * 4 * 8192 * ((info->channel-2)/8));
+                info->first = (info->channel < 2 || info->channel > 193) ?
+                    32 * info->channel : 32 * ((info->channel-2) % 8);
+                info->step = (info->channel < 2 || info->channel > 193) ? 64 : 256;
+                break;
+            case ds:
+            case qs:
+        }
 
 		info->offset = hdspm->channel_map_out[info->channel] *
 			HDSPM_CHANNEL_BUFFER_BYTES;
@@ -5687,17 +5728,46 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 			return -EINVAL;
 		}
 
-		if (hdspm->channel_map_in[info->channel] < 0) {
-			snd_printk(KERN_INFO "snd_madifx_channel_info: input channel %d mapped out\n", info->channel);
-			return -EINVAL;
-		}
-
-		info->offset = hdspm->channel_map_in[info->channel] *
-			HDSPM_CHANNEL_BUFFER_BYTES;
+        switch (hdspm->speedmode) {
+            /* MADI FX Input channel map
+               Inputstream 0 with 2 channels at byte offset 0           AES
+               Inputstream 1 with 8 channels at byte offset 65536       MADI
+               Inputstream 2 with 8 channels at byte offset 327680
+               Inputstream 3 with 8 channels at byte offset 589824
+               Inputstream 4 with 8 channels at byte offset 851968
+               Inputstream 5 with 8 channels at byte offset 1114112
+               Inputstream 6 with 8 channels at byte offset 1376256
+               Inputstream 7 with 8 channels at byte offset 1638400
+               Inputstream 8 with 8 channels at byte offset 1900544
+               Inputstream 9 with 8 channels at byte offset 2162688
+               Inputstream 10 with 8 channels at byte offset 2424832
+               Inputstream 11 with 8 channels at byte offset 2686976
+               Inputstream 12 with 8 channels at byte offset 2949120
+               Inputstream 13 with 8 channels at byte offset 3211264
+               Inputstream 14 with 8 channels at byte offset 3473408
+               Inputstream 15 with 8 channels at byte offset 3735552
+               Inputstream 16 with 8 channels at byte offset 3997696
+               Inputstream 17 with 8 channels at byte offset 4259840
+               Inputstream 18 with 8 channels at byte offset 4521984
+               Inputstream 19 with 8 channels at byte offset 4784128
+               Inputstream 20 with 8 channels at byte offset 5046272
+               Inputstream 21 with 8 channels at byte offset 5308416
+               Inputstream 22 with 8 channels at byte offset 5570560
+               Inputstream 23 with 8 channels at byte offset 5832704
+               Inputstream 24 with 8 channels at byte offset 6094848
+               */
+            case ss:
+                info->offset = (info->channel < 2) ? 0 : 65536 + 8 * 4 * 8192 *
+                    ((info->channel-2)/8);
+                info->first = (info->channel < 2) ? 32 * info->channel :
+                    32 * ((info->channel-2) % 8);
+                info->step = (info->channel < 2) ? 64 : 256;
+                break;
+            case ds:
+            case qs:
+        }
 	}
 
-	info->first = 0;
-	info->step = 32;
 	return 0;
 }
 
@@ -5808,7 +5878,7 @@ static struct snd_pcm_hardware snd_madifx_playback_subinfo = {
 	.buffer_bytes_max =
 	    HDSPM_CHANNEL_BUFFER_BYTES * HDSPM_MAX_CHANNELS,
 	.period_bytes_min = (32 * 4),
-	.period_bytes_max = (8192 * 4) * 194,
+	.period_bytes_max = OUTPUT_DMA_BUFFER_SIZE,
 	.periods_min = 2,
 	.periods_max = 1024,
 	.fifo_size = 0
@@ -5833,7 +5903,7 @@ static struct snd_pcm_hardware snd_madifx_capture_subinfo = {
 	.buffer_bytes_max =
 	    HDSPM_CHANNEL_BUFFER_BYTES * HDSPM_MAX_CHANNELS,
 	.period_bytes_min = (32 * 4),
-	.period_bytes_max = (8192 * 4) * 196,
+	.period_bytes_max = INPUT_DMA_BUFFER_SIZE,
 	.periods_min = 2,
 	.periods_max = 1024,
 	.fifo_size = 0
@@ -6056,10 +6126,9 @@ static int snd_madifx_playback_open(struct snd_pcm_substream *substream)
 		snd_pcm_hw_constraint_minmax(runtime,
 					     SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
 					     32, 4096);
-		/* FIXME: MADIFX buffer size unknown */
 		snd_pcm_hw_constraint_minmax(runtime,
 					     SNDRV_PCM_HW_PARAM_BUFFER_SIZE,
-					     16384, 16384);
+					     8192, 8192);
 		break;
 
 	default:
@@ -6136,13 +6205,12 @@ static int snd_madifx_capture_open(struct snd_pcm_substream *substream)
 					     16384, 16384);
 		break;
 	case MADIFX:
-		/* FIXME: MADIFX buffer size unknown */
 		snd_pcm_hw_constraint_minmax(runtime,
 					     SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
 					     32, 4096);
 		snd_pcm_hw_constraint_minmax(runtime,
 					     SNDRV_PCM_HW_PARAM_BUFFER_SIZE,
-					     16384, 16384);
+					     8192, 8192);
 		break;
 
 	default:
