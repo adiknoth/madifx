@@ -970,7 +970,7 @@ struct hdspm {
 
 	unsigned int serial;
 
-	int speedmode = ss;
+	int speedmode;
 
 	struct madifx_peak_rms peak_rms;
 };
@@ -1282,7 +1282,7 @@ static int madifx_get_latency(struct hdspm *hdspm)
 	 * denotes 8192 samples, but on new cards like RayDAT or AIO,
 	 * it corresponds to 32 samples.
 	 */
-	if ((7 == n) && (RayDAT == hdspm->io_type || AIO == hdspm->io_type))
+	if (7 == n)
 		n = -1;
 
 	return 1 << (n + 6);
@@ -5718,6 +5718,8 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
                 break;
             case ds:
             case qs:
+				/* FIXME: No idea if really needed */
+				break;
         }
 
 		info->offset = hdspm->channel_map_out[info->channel] *
@@ -5765,6 +5767,8 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
                 break;
             case ds:
             case qs:
+				/* FIXME: No idea if really needed */
+				break;
         }
 	}
 
@@ -5874,9 +5878,8 @@ static struct snd_pcm_hardware snd_madifx_playback_subinfo = {
 	.rate_min = 32000,
 	.rate_max = 192000,
 	.channels_min = 1,
-	.channels_max = 194,
-	.buffer_bytes_max =
-	    HDSPM_CHANNEL_BUFFER_BYTES * HDSPM_MAX_CHANNELS,
+	.channels_max = 196,
+	.buffer_bytes_max = OUTPUT_DMA_BUFFER_SIZE,
 	.period_bytes_min = (32 * 4),
 	.period_bytes_max = OUTPUT_DMA_BUFFER_SIZE,
 	.periods_min = 2,
@@ -5899,9 +5902,8 @@ static struct snd_pcm_hardware snd_madifx_capture_subinfo = {
 	.rate_min = 32000,
 	.rate_max = 192000,
 	.channels_min = 1,
-	.channels_max = 196,
-	.buffer_bytes_max =
-	    HDSPM_CHANNEL_BUFFER_BYTES * HDSPM_MAX_CHANNELS,
+	.channels_max = 194,
+	.buffer_bytes_max = INPUT_DMA_BUFFER_SIZE,
 	.period_bytes_min = (32 * 4),
 	.period_bytes_max = INPUT_DMA_BUFFER_SIZE,
 	.periods_min = 2,
