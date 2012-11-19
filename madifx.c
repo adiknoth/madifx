@@ -89,9 +89,12 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 /* --- Write registers. ---
   These are defined as byte-offsets from the iobase value.  */
 
-#define MADIFX_SETTINGS_REG         (2*4)
-#define HDSPM_outputBufferAddress    32
-#define HDSPM_inputBufferAddress     36
+#define MADIFX_SETTINGS_REG	(2*4)
+#define MADIFX_MIXER_LIST_VOL	(16384*4)
+#define MADIFX_MIXER_LIST_CH	(20480*4)
+#define MADIFX_WR_OUTPUT_GAIN	((24576+256)*4)
+
+
 #define MADIFX_CONTROL_REG	     0
 #define HDSPM_interruptConfirmation  96
 #define HDSPM_control2Reg	     256  /* not in specs ???????? */
@@ -104,10 +107,10 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define HDSPM_outputEnableBase       384
 #define HDSPM_inputEnableBase        256
 
-/* 16 page addresses for each of the 64 channels DMA buffer in and out
-   (each 64k=16*4k) Buffer must be 4k aligned (which is default i386 ????) */
-#define HDSPM_pageAddressBufferOut       (8192*4)
-#define HDSPM_pageAddressBufferIn        (HDSPM_pageAddressBufferOut+8192)
+#define MADIFX_PAGE_ADDRESS_LIST   (8192*4)
+
+/* page table size in entries, multiply by 4 to get byte offset */
+#define MADIFX_MAX_PAGE_TABLE_SIZE	4096
 
 #define HDSPM_MADI_mixerBase    32768	/* 32768-65535 for 2x64x64 Fader */
 
@@ -1003,7 +1006,7 @@ static int snd_madifx_set_defaults(struct hdspm *hdspm);
 static int madifx_system_clock_mode(struct hdspm *hdspm);
 static void madifx_set_sgbuf(struct hdspm *hdspm,
 			    struct snd_pcm_substream *substream,
-			     unsigned int reg, int channels);
+			     unsigned int reg, int offset);
 
 static inline int HDSPM_bit2freq(int n)
 {
@@ -1304,6 +1307,7 @@ static snd_pcm_uframes_t madifx_hw_pointer(struct hdspm *hdspm)
 	switch (hdspm->io_type) {
 	case RayDAT:
 	case AIO:
+	case MADIFX:
 		position &= HDSPM_BufferPositionMask;
 		position /= 4; /* Bytes per sample */
 		break;
@@ -1328,20 +1332,14 @@ static inline void madifx_stop_audio(struct hdspm * s)
 	madifx_write(s, MADIFX_CONTROL_REG, s->control_register);
 }
 
-/* should I silence all or only opened ones ? doit all for first even is 4MB*/
 static void madifx_silence_playback(struct hdspm *hdspm)
 {
-	int i;
-	int n = hdspm->period_bytes;
 	void *buf = hdspm->playback_buffer;
 
 	if (buf == NULL)
 		return;
 
-	for (i = 0; i < HDSPM_MAX_CHANNELS; i++) {
-		memset(buf, 0, n);
-		buf += HDSPM_CHANNEL_BUFFER_BYTES;
-	}
+	memset(buf, 0, OUTPUT_DMA_BUFFER_SIZE);
 }
 
 static int madifx_set_interrupt_interval(struct hdspm *s, unsigned int frames)
@@ -1614,6 +1612,11 @@ static void all_in_all_mixer(struct hdspm * hdspm, int sgain)
 {
 	int i, j;
 	unsigned int gain;
+
+	/* FIXME: MADI FX unsupported, yet. */
+	if (MADIFX == hdspm->io_type) {
+		return;
+	}
 
 	if (sgain > UNITY_GAIN)
 		gain = UNITY_GAIN;
@@ -4653,6 +4656,11 @@ static int madifx_update_simple_mixer_controls(struct hdspm * hdspm)
 {
 	int i;
 
+	/* FIXME: MADI FX unsupported, yet. */
+	if (MADIFX == hdspm->io_type) {
+		return -EINVAL;
+	}
+
 	for (i = hdspm->ds_out_channels; i < hdspm->ss_out_channels; ++i) {
 		if (hdspm->system_sample_rate > 48000) {
 			hdspm->playback_mixer_ctls[i]->vd[0].access =
@@ -5275,7 +5283,7 @@ static void __devinit snd_madifx_proc_init(struct hdspm *hdspm)
 {
 	struct snd_info_entry *entry;
 
-	if (!snd_card_proc_new(hdspm->card, "hdspm", &entry)) {
+	if (!snd_card_proc_new(hdspm->card, "madifx", &entry)) {
 		switch (hdspm->io_type) {
 		case AES32:
 			snd_info_set_text_ops(entry, hdspm,
@@ -5294,6 +5302,9 @@ static void __devinit snd_madifx_proc_init(struct hdspm *hdspm)
 					snd_madifx_proc_read_raydat);
 			break;
 		case AIO:
+			break;
+		case MADIFX:
+			/* FIXME: MADI FX missing */
 			break;
 		}
 	}
@@ -5500,7 +5511,6 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 {
 	struct hdspm *hdspm = snd_pcm_substream_chip(substream);
 	int err;
-	int i;
 	pid_t this_pid;
 	pid_t other_pid;
 
@@ -5568,6 +5578,8 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 	/* Update for MADI rev 204: we need to allocate for all channels,
 	 * otherwise it doesn't work at 96kHz */
 
+#if 0
+	/* moved to snd_madifx_preallocate_memory */
 	{
 		int wanted;
 
@@ -5608,6 +5620,7 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 		snd_printdd("Allocated sample buffer for capture at %p\n",
 				hdspm->capture_buffer);
 	}
+#endif
 
 	/*
 	   snd_printdd("Allocated sample buffer for %s at 0x%08X\n",
@@ -6500,13 +6513,13 @@ static int __devinit snd_madifx_create_hwdep(struct snd_card *card,
 	struct snd_hwdep *hw;
 	int err;
 
-	err = snd_hwdep_new(card, "HDSPM hwdep", 0, &hw);
+	err = snd_hwdep_new(card, "MADIFX hwdep", 0, &hw);
 	if (err < 0)
 		return err;
 
 	hdspm->hwdep = hw;
 	hw->private_data = hdspm;
-	strcpy(hw->name, "HDSPM hwdep interface");
+	strcpy(hw->name, "MADIFX hwdep interface");
 
 	hw->ops.open = snd_madifx_hwdep_dummy_op;
 	hw->ops.ioctl = snd_madifx_hwdep_ioctl;
@@ -6524,14 +6537,29 @@ static int __devinit snd_madifx_preallocate_memory(struct hdspm *hdspm)
 {
 	int err;
 	int stream;
+	int i;
 	struct snd_pcm *pcm;
 	struct snd_pcm_substream *substream;
 	size_t wanted;
+	dma_addr_t *dmaPageTable;
 
 	pcm = hdspm->pcm;
 
+#define NUM_AES_PAGES 32768*2/4096
+#define NUM_MADI_PAGES 32768*192/4096
+#define NUM_DMA_CH_PAGES 32768*8/4096
+#define MADIFX_HARDWARE_PAGE_SIZE 4096
 
 	wanted = OUTPUT_DMA_BUFFER_SIZE;
+
+	dmaPageTable = kzalloc(sizeof(dma_addr_t) *
+			MADIFX_MAX_PAGE_TABLE_SIZE, GFP_KERNEL);
+
+	if (!dmaPageTable) {
+		snd_printk(KERN_ERR "MADIFX: "
+				"unable to kmalloc dmaPageTable memory\n");
+		return -ENOMEM;
+	}
 
 	for (stream = 0; stream < 2 ; stream++) {
 		for (substream = pcm->streams[stream].substream; substream;
@@ -6544,34 +6572,119 @@ static int __devinit snd_madifx_preallocate_memory(struct hdspm *hdspm)
 			}
 
 			err = snd_pcm_lib_preallocate_pages(substream,
-						SNDRV_DMA_TYPE_DEV_SG,
-						snd_dma_pci_data(hdspm->pci),
-						wanted,
-						wanted);
+					SNDRV_DMA_TYPE_DEV_SG,
+					snd_dma_pci_data(hdspm->pci),
+					wanted,
+					wanted);
 			if (err < 0) {
 				snd_printdd("Could not preallocate %zd Bytes\n", wanted);
 
 				return err;
 			} else
 				snd_printdd(" Preallocated %zd Bytes\n", wanted);
+
+			err = snd_pcm_lib_malloc_pages(substream, wanted);
+			if (err < 0) {
+				snd_printk(KERN_INFO "err on snd_pcm_lib_malloc_pages: %d\n",
+						err);
+				return err;
+			}
+
+			if (SNDRV_PCM_STREAM_CAPTURE == substream->stream) {
+				/* initialise default DMA table. Will be
+				 * overwritten in a second. */
+				for (i = MADIFX_MAX_PAGE_TABLE_SIZE/2;
+						i < MADIFX_MAX_PAGE_TABLE_SIZE; i++) {
+					dmaPageTable[i] = snd_pcm_sgbuf_get_addr(substream, 0);
+				}
+
+				hdspm->capture_buffer =
+					(unsigned char *) substream->runtime->dma_area;
+				snd_printdd("Allocated sample buffer for capture at %p\n",
+						hdspm->capture_buffer);
+				
+				/* setup DMA page table */
+				/* AES In, stereo */
+				for (i = 0; i < NUM_AES_PAGES; i++) {
+					dmaPageTable[i+MADIFX_MAX_PAGE_TABLE_SIZE/2] =
+						snd_pcm_sgbuf_get_addr(substream,
+								i * MADIFX_HARDWARE_PAGE_SIZE);
+				}
+
+				/* MADI In, 192 channels */
+				for (i = 0; i < NUM_MADI_PAGES; i++) {
+					dmaPageTable[i + MADIFX_MAX_PAGE_TABLE_SIZE / 2 + NUM_DMA_CH_PAGES] =
+						snd_pcm_sgbuf_get_addr(substream,
+								(i +
+								 NUM_AES_PAGES) *
+								MADIFX_HARDWARE_PAGE_SIZE);
+		}
+			} else {
+				/* initialise default DMA table. Will be
+				 * overwritten in a second. */
+				for (i = 0; i < MADIFX_MAX_PAGE_TABLE_SIZE/2; i++) {
+					dmaPageTable[i] = 
+						snd_pcm_sgbuf_get_addr(substream, 0);
+				}
+
+				hdspm->playback_buffer =
+					(unsigned char *) substream->runtime->dma_area;
+				snd_printdd("Allocated sample buffer for playback at %p\n",
+						hdspm->playback_buffer);
+
+				/* AES Out, stereo */
+				for (i = 0; i < NUM_AES_PAGES; i++) {
+					dmaPageTable[i] =
+						snd_pcm_sgbuf_get_addr(substream,
+								i *
+								MADIFX_HARDWARE_PAGE_SIZE);
+				}
+
+				/* Phones Out, stereo */
+				for (i = 0; i < NUM_AES_PAGES; i++) {
+					dmaPageTable[i+1*NUM_DMA_CH_PAGES] =
+						snd_pcm_sgbuf_get_addr(substream,
+								(i+1*NUM_AES_PAGES)*
+								MADIFX_HARDWARE_PAGE_SIZE);
+				}
+
+				/* MADI Out, 192 channels */
+				for (i = 0; i < NUM_MADI_PAGES; i++) {
+					dmaPageTable[i+2*NUM_DMA_CH_PAGES] =
+						snd_pcm_sgbuf_get_addr(substream,
+								(i+2*NUM_AES_PAGES) *
+								MADIFX_HARDWARE_PAGE_SIZE);
+				}
+			}
 		}
 	}
+
+	/* enable IO streams */
+	for (i = 0; i < 32; ++i) {
+		snd_madifx_enable_out(hdspm, i, 1);
+		snd_madifx_enable_in(hdspm, i, 1);
+	}
+
+	for (i = 0; i < MADIFX_MAX_PAGE_TABLE_SIZE; i++) {
+		madifx_write(hdspm, MADIFX_PAGE_ADDRESS_LIST + (4 * i), dmaPageTable[i]);
+	}
+
+	/* no longer needed once written to the device */
+	kfree(dmaPageTable);
+
 
 
 	return 0;
 }
 
 
-static void madifx_set_sgbuf(struct hdspm *hdspm,
+static void __devinit madifx_set_sgbuf(struct hdspm *hdspm,
 			    struct snd_pcm_substream *substream,
-			     unsigned int reg, int channels)
+			     unsigned int reg, int offset)
 {
-	int i;
-
 	/* continuous memory segment */
-	for (i = 0; i < (channels * 16); i++)
-		madifx_write(hdspm, reg + 4 * i,
-				snd_pcm_sgbuf_get_addr(substream, 4096 * i));
+		madifx_write(hdspm, reg + 4 * offset,
+				snd_pcm_sgbuf_get_addr(substream, 4096 * offset));
 }
 
 
@@ -6640,7 +6753,8 @@ static int __devinit snd_madifx_create_alsa_devices(struct snd_card *card,
 		return err;
 
 	snd_printdd("proc init...\n");
-	snd_madifx_proc_init(hdspm);
+	/* FIXME: MADI FX disable, no proc so far */
+	//snd_madifx_proc_init(hdspm);
 
 	hdspm->system_sample_rate = -1;
 	hdspm->last_external_sample_rate = -1;
@@ -6656,13 +6770,14 @@ static int __devinit snd_madifx_create_alsa_devices(struct snd_card *card,
 		return err;
 
 	snd_printdd("Update mixer controls...\n");
-	madifx_update_simple_mixer_controls(hdspm);
+	/* FIXME: MADI FX disable, old mixer is broken */
+	//madifx_update_simple_mixer_controls(hdspm);
 
 	snd_printdd("Initializeing complete ???\n");
 
 	err = snd_card_register(card);
 	if (err < 0) {
-		snd_printk(KERN_ERR "HDSPM: error registering card\n");
+		snd_printk(KERN_ERR "MADIFX: error registering card\n");
 		return err;
 	}
 
@@ -6791,8 +6906,7 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 
 	{
 		/* This somehow initialises the mixer. I have no idea what it
-		 * does exactly. Of course, the data has to be written to the
-		 * device before something can happen.
+		 * does exactly.
 		 */
 		int i;
 		for (i = 0; i < MADIFX_NUM_OUTPUT_GAINS; i++) {
@@ -6808,6 +6922,21 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 			hdspm->newmixer->listCh[i] = (256 + i) | (i << 9);
 			hdspm->newmixer->listVol[i] = 32768+(32768>>3);
 		}		 		 
+
+		/* Of course, the data has to be written to the device before
+		 * something can happen.
+		 */
+		for (i = 0; i < MADIFX_LIST_LENGTH; i++) {
+			madifx_write(hdspm, MADIFX_MIXER_LIST_CH + (4 * i),
+					hdspm->newmixer->listCh[i]);
+			madifx_write(hdspm, MADIFX_MIXER_LIST_VOL + (4 * i),
+					hdspm->newmixer->listVol[i]);
+		}	
+
+		for (i = 0; i < MADIFX_NUM_OUTPUT_GAINS; i++) {
+			madifx_write(hdspm, MADIFX_WR_OUTPUT_GAIN + (4 * i),
+					hdspm->newmixer->output_gain[i]);
+		}
 	}
 
 
