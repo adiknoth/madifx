@@ -963,6 +963,7 @@ struct hdspm {
 	/* full mixer accessible over mixer ioctl or hwdep-device */
 	struct madifx_mixer *mixer;
 	struct madifx_newmixer *newmixer;
+	dma_addr_t *dmaPageTable;
 
 	struct madifx_tco *tco;  /* NULL if no TCO detected */
 
@@ -5511,6 +5512,7 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 {
 	struct hdspm *hdspm = snd_pcm_substream_chip(substream);
 	int err;
+	int i;
 	pid_t this_pid;
 	pid_t other_pid;
 
@@ -5578,8 +5580,11 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 	/* Update for MADI rev 204: we need to allocate for all channels,
 	 * otherwise it doesn't work at 96kHz */
 
-#if 0
-	/* moved to snd_madifx_preallocate_memory */
+#define NUM_AES_PAGES 32768*2/4096
+#define NUM_MADI_PAGES 32768*192/4096
+#define NUM_DMA_CH_PAGES 32768*8/4096
+#define MADIFX_HARDWARE_PAGE_SIZE 4096
+
 	{
 		int wanted;
 
@@ -5598,8 +5603,36 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 
-		madifx_set_sgbuf(hdspm, substream, HDSPM_pageAddressBufferOut,
-				params_channels(params));
+		/* initialise default DMA table. Will be
+		 * overwritten in a second. */
+		for (i = 0; i < MADIFX_MAX_PAGE_TABLE_SIZE/2; i++) {
+			hdspm->dmaPageTable[i] = snd_pcm_sgbuf_get_addr(substream, 0);
+		}
+
+		/* AES Out, stereo */
+		for (i = 0; i < NUM_AES_PAGES; i++) {
+			hdspm->dmaPageTable[i] = snd_pcm_sgbuf_get_addr(substream,
+					i * MADIFX_HARDWARE_PAGE_SIZE);
+		}
+
+		/* Phones Out, stereo */
+		for (i = 0; i < NUM_AES_PAGES; i++) {
+			hdspm->dmaPageTable[i+1*NUM_DMA_CH_PAGES] =
+				snd_pcm_sgbuf_get_addr(substream,
+						(i+1*NUM_AES_PAGES)* MADIFX_HARDWARE_PAGE_SIZE);
+		}
+
+		/* MADI Out, 192 channels */
+		for (i = 0; i < NUM_MADI_PAGES; i++) {
+			hdspm->dmaPageTable[i+2*NUM_DMA_CH_PAGES] =
+				snd_pcm_sgbuf_get_addr(substream,
+						(i+2*NUM_AES_PAGES) * MADIFX_HARDWARE_PAGE_SIZE);
+		}
+
+		for (i = 0; i < MADIFX_MAX_PAGE_TABLE_SIZE/2; i++) {
+			madifx_write(hdspm, MADIFX_PAGE_ADDRESS_LIST + (4 * i),
+					hdspm->dmaPageTable[i]);
+		}
 
 		for (i = 0; i < 32; ++i)
 			snd_madifx_enable_out(hdspm, i, 1);
@@ -5609,8 +5642,38 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 		snd_printdd("Allocated sample buffer for playback at %p\n",
 				hdspm->playback_buffer);
 	} else {
+		/* initialise default DMA table. Will be
+		 * overwritten in a second. */
+		for (i = MADIFX_MAX_PAGE_TABLE_SIZE/2;
+				i < MADIFX_MAX_PAGE_TABLE_SIZE; i++) {
+			hdspm->dmaPageTable[i] = snd_pcm_sgbuf_get_addr(substream, 0);
+		}
+
+		/* setup DMA page table */
+		/* AES In, stereo */
+		for (i = 0; i < NUM_AES_PAGES; i++) {
+			hdspm->dmaPageTable[i+MADIFX_MAX_PAGE_TABLE_SIZE/2] =
+				snd_pcm_sgbuf_get_addr(substream,
+						i * MADIFX_HARDWARE_PAGE_SIZE);
+		}
+
+		/* MADI In, 192 channels */
+		for (i = 0; i < NUM_MADI_PAGES; i++) {
+			hdspm->dmaPageTable[i + MADIFX_MAX_PAGE_TABLE_SIZE / 2 + NUM_DMA_CH_PAGES] =
+				snd_pcm_sgbuf_get_addr(substream,
+						(i + NUM_AES_PAGES) * MADIFX_HARDWARE_PAGE_SIZE);
+		}
+
+		for (i = MADIFX_MAX_PAGE_TABLE_SIZE/2;
+				i < MADIFX_MAX_PAGE_TABLE_SIZE; i++) {
+			madifx_write(hdspm, MADIFX_PAGE_ADDRESS_LIST + (4 * i),
+					hdspm->dmaPageTable[i]);
+		}
+
+#if 0
 		madifx_set_sgbuf(hdspm, substream, HDSPM_pageAddressBufferIn,
 				params_channels(params));
+#endif
 
 		for (i = 0; i < 32; ++i)
 			snd_madifx_enable_in(hdspm, i, 1);
@@ -5620,7 +5683,6 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 		snd_printdd("Allocated sample buffer for capture at %p\n",
 				hdspm->capture_buffer);
 	}
-#endif
 
 	/*
 	   snd_printdd("Allocated sample buffer for %s at 0x%08X\n",
@@ -6537,25 +6599,19 @@ static int __devinit snd_madifx_preallocate_memory(struct hdspm *hdspm)
 {
 	int err;
 	int stream;
-	int i;
 	struct snd_pcm *pcm;
 	struct snd_pcm_substream *substream;
 	size_t wanted;
-	dma_addr_t *dmaPageTable;
 
 	pcm = hdspm->pcm;
 
-#define NUM_AES_PAGES 32768*2/4096
-#define NUM_MADI_PAGES 32768*192/4096
-#define NUM_DMA_CH_PAGES 32768*8/4096
-#define MADIFX_HARDWARE_PAGE_SIZE 4096
 
 	wanted = OUTPUT_DMA_BUFFER_SIZE;
 
-	dmaPageTable = kzalloc(sizeof(dma_addr_t) *
+	hdspm->dmaPageTable = kzalloc(sizeof(dma_addr_t) *
 			MADIFX_MAX_PAGE_TABLE_SIZE, GFP_KERNEL);
 
-	if (!dmaPageTable) {
+	if (!hdspm->dmaPageTable) {
 		snd_printk(KERN_ERR "MADIFX: "
 				"unable to kmalloc dmaPageTable memory\n");
 		return -ENOMEM;
@@ -6583,102 +6639,29 @@ static int __devinit snd_madifx_preallocate_memory(struct hdspm *hdspm)
 			} else
 				snd_printdd(" Preallocated %zd Bytes\n", wanted);
 
-			err = snd_pcm_lib_malloc_pages(substream, wanted);
-			if (err < 0) {
-				snd_printk(KERN_INFO "err on snd_pcm_lib_malloc_pages: %d\n",
-						err);
-				return err;
-			}
-
 			if (SNDRV_PCM_STREAM_CAPTURE == substream->stream) {
-				/* initialise default DMA table. Will be
-				 * overwritten in a second. */
-				for (i = MADIFX_MAX_PAGE_TABLE_SIZE/2;
-						i < MADIFX_MAX_PAGE_TABLE_SIZE; i++) {
-					dmaPageTable[i] = snd_pcm_sgbuf_get_addr(substream, 0);
-				}
-
 				hdspm->capture_buffer =
 					(unsigned char *) substream->runtime->dma_area;
 				snd_printdd("Allocated sample buffer for capture at %p\n",
 						hdspm->capture_buffer);
 				
-				/* setup DMA page table */
-				/* AES In, stereo */
-				for (i = 0; i < NUM_AES_PAGES; i++) {
-					dmaPageTable[i+MADIFX_MAX_PAGE_TABLE_SIZE/2] =
-						snd_pcm_sgbuf_get_addr(substream,
-								i * MADIFX_HARDWARE_PAGE_SIZE);
-				}
-
-				/* MADI In, 192 channels */
-				for (i = 0; i < NUM_MADI_PAGES; i++) {
-					dmaPageTable[i + MADIFX_MAX_PAGE_TABLE_SIZE / 2 + NUM_DMA_CH_PAGES] =
-						snd_pcm_sgbuf_get_addr(substream,
-								(i +
-								 NUM_AES_PAGES) *
-								MADIFX_HARDWARE_PAGE_SIZE);
-		}
 			} else {
-				/* initialise default DMA table. Will be
-				 * overwritten in a second. */
-				for (i = 0; i < MADIFX_MAX_PAGE_TABLE_SIZE/2; i++) {
-					dmaPageTable[i] = 
-						snd_pcm_sgbuf_get_addr(substream, 0);
-				}
 
 				hdspm->playback_buffer =
 					(unsigned char *) substream->runtime->dma_area;
 				snd_printdd("Allocated sample buffer for playback at %p\n",
 						hdspm->playback_buffer);
 
-				/* AES Out, stereo */
-				for (i = 0; i < NUM_AES_PAGES; i++) {
-					dmaPageTable[i] =
-						snd_pcm_sgbuf_get_addr(substream,
-								i *
-								MADIFX_HARDWARE_PAGE_SIZE);
-				}
-
-				/* Phones Out, stereo */
-				for (i = 0; i < NUM_AES_PAGES; i++) {
-					dmaPageTable[i+1*NUM_DMA_CH_PAGES] =
-						snd_pcm_sgbuf_get_addr(substream,
-								(i+1*NUM_AES_PAGES)*
-								MADIFX_HARDWARE_PAGE_SIZE);
-				}
-
-				/* MADI Out, 192 channels */
-				for (i = 0; i < NUM_MADI_PAGES; i++) {
-					dmaPageTable[i+2*NUM_DMA_CH_PAGES] =
-						snd_pcm_sgbuf_get_addr(substream,
-								(i+2*NUM_AES_PAGES) *
-								MADIFX_HARDWARE_PAGE_SIZE);
-				}
 			}
 		}
 	}
-
-	/* enable IO streams */
-	for (i = 0; i < 32; ++i) {
-		snd_madifx_enable_out(hdspm, i, 1);
-		snd_madifx_enable_in(hdspm, i, 1);
-	}
-
-	for (i = 0; i < MADIFX_MAX_PAGE_TABLE_SIZE; i++) {
-		madifx_write(hdspm, MADIFX_PAGE_ADDRESS_LIST + (4 * i), dmaPageTable[i]);
-	}
-
-	/* no longer needed once written to the device */
-	kfree(dmaPageTable);
-
 
 
 	return 0;
 }
 
 
-static void __devinit madifx_set_sgbuf(struct hdspm *hdspm,
+static void madifx_set_sgbuf(struct hdspm *hdspm,
 			    struct snd_pcm_substream *substream,
 			     unsigned int reg, int offset)
 {
@@ -7203,6 +7186,7 @@ static int snd_madifx_free(struct hdspm * hdspm)
 		free_irq(hdspm->irq, (void *) hdspm);
 
 	kfree(hdspm->mixer);
+	kfree(hdspm->dmaPageTable);
 
 	if (hdspm->iobase)
 		iounmap(hdspm->iobase);
