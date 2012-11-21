@@ -14,7 +14,7 @@ BINDIR := $(DESTDIR)/usr/local/bin
 INCDIR := $(DESTDIR)/usr/include/alsa/sound
 
 default::
-	$(MAKE) -Wall -Wextra -C $(KDIR) SUBDIRS=$(PWD) modules
+	$(MAKE) -Wall -Wextra -C $(KDIR) SUBDIRS=$(PWD) EXTRA_CFLAGS="-g" modules
 
 install-only:: default
 	mkdir -p $(MODDIR) $(BINDIR)
