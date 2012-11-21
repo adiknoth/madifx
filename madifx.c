@@ -1423,6 +1423,7 @@ static void madifx_set_dds_value(struct hdspm *hdspm, int rate)
 		rate /= 2;
 
 	switch (hdspm->io_type) {
+	case MADIFX:
 	case MADIface:
 		n = 131072000000000ULL;  /* 125 MHz */
 		break;
@@ -4884,6 +4885,8 @@ snd_madifx_proc_read_madi(struct snd_info_entry * entry,
 		case AIO:
 			freq_const = 104857600000000ULL;
 			break;
+		case MADIFX:
+			freq_const = 131072000000000ULL;
 		case MADIface:
 			break; /* no TCO possible */
 		}
