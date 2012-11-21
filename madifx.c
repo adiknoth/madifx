@@ -6606,7 +6606,7 @@ static int __devinit snd_madifx_preallocate_memory(struct hdspm *hdspm)
 	pcm = hdspm->pcm;
 
 
-	wanted = OUTPUT_DMA_BUFFER_SIZE;
+	wanted = max(INPUT_DMA_BUFFER_SIZE, OUTPUT_DMA_BUFFER_SIZE);
 
 	hdspm->dmaPageTable = kzalloc(sizeof(dma_addr_t) *
 			MADIFX_MAX_PAGE_TABLE_SIZE, GFP_KERNEL);
@@ -6617,44 +6617,19 @@ static int __devinit snd_madifx_preallocate_memory(struct hdspm *hdspm)
 		return -ENOMEM;
 	}
 
-	for (stream = 0; stream < 2 ; stream++) {
-		for (substream = pcm->streams[stream].substream; substream;
-				substream = substream->next) {
+	err =
+	     snd_pcm_lib_preallocate_pages_for_all(pcm,
+						   SNDRV_DMA_TYPE_DEV_SG,
+						   snd_dma_pci_data(hdspm->pci),
+						   wanted,
+						   wanted);
+	if (err < 0) {
+		snd_printdd("Could not preallocate %zd Bytes\n", wanted);
 
-			if (SNDRV_PCM_STREAM_CAPTURE == substream->stream) {
-				wanted = INPUT_DMA_BUFFER_SIZE;
-			} else {
-				wanted = OUTPUT_DMA_BUFFER_SIZE;
-			}
+		return err;
+	} else
+		snd_printdd(" Preallocated %zd Bytes\n", wanted);
 
-			err = snd_pcm_lib_preallocate_pages(substream,
-					SNDRV_DMA_TYPE_DEV_SG,
-					snd_dma_pci_data(hdspm->pci),
-					wanted,
-					wanted);
-			if (err < 0) {
-				snd_printdd("Could not preallocate %zd Bytes\n", wanted);
-
-				return err;
-			} else
-				snd_printdd(" Preallocated %zd Bytes\n", wanted);
-
-			if (SNDRV_PCM_STREAM_CAPTURE == substream->stream) {
-				hdspm->capture_buffer =
-					(unsigned char *) substream->runtime->dma_area;
-				snd_printdd("Allocated sample buffer for capture at %p\n",
-						hdspm->capture_buffer);
-				
-			} else {
-
-				hdspm->playback_buffer =
-					(unsigned char *) substream->runtime->dma_area;
-				snd_printdd("Allocated sample buffer for playback at %p\n",
-						hdspm->playback_buffer);
-
-			}
-		}
-	}
 
 
 	return 0;
