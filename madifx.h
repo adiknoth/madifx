@@ -21,7 +21,7 @@
  */
 
 /* Maximum channels is 64 even on 56Mode you have 64playbacks to matrix */
-#define HDSPM_MAX_CHANNELS      64
+#define HDSPM_MAX_CHANNELS      196
 
 enum madifx_io_type {
 	MADI,
@@ -41,13 +41,13 @@ enum madifx_speed {
 /* -------------------- IOCTL Peak/RMS Meters -------------------- */
 
 struct madifx_peak_rms {
-	uint32_t input_peaks[64];
-	uint32_t playback_peaks[64];
-	uint32_t output_peaks[64];
+	uint32_t input_peaks[HDSPM_MAX_CHANNELS];
+	uint32_t playback_peaks[HDSPM_MAX_CHANNELS];
+	uint32_t output_peaks[HDSPM_MAX_CHANNELS];
 
-	uint64_t input_rms[64];
-	uint64_t playback_rms[64];
-	uint64_t output_rms[64];
+	uint64_t input_rms[HDSPM_MAX_CHANNELS];
+	uint64_t playback_rms[HDSPM_MAX_CHANNELS];
+	uint64_t output_rms[HDSPM_MAX_CHANNELS];
 
 	uint8_t speed; /* enum {ss, ds, qs} */
 	int status2;

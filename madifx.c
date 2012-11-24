@@ -96,7 +96,7 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 
 
 #define MADIFX_CONTROL_REG	     0
-#define HDSPM_interruptConfirmation  96
+#define MADIFX_IRQ_ACK           (3*4)
 #define HDSPM_control2Reg	     256  /* not in specs ???????? */
 #define HDSPM_freqReg                256  /* for AES32 */
 #define HDSPM_midiDataOut0	     352  /* just believe in old code */
@@ -206,7 +206,7 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define HDSPM_MADI_OUTPUT_RMS_H		7680
 
 /* --- Control Register bits --------- */
-#define HDSPM_Start                (1<<0) /* start engine */
+#define MADIFX_START                (1<<0) /* start engine */
 
 #define HDSPM_Latency0             (1<<1) /* buffer size = 2^n */
 #define HDSPM_Latency1             (1<<2) /* where n is defined */
@@ -254,10 +254,11 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define MADIFX_IEN2				0x00008000
 #define MADIFX_IEN3				0x00010000
 
-#define mIRQ0		0x10000000
-#define mIRQ1		0x20000000
-#define mIRQ2		0x40000000
-#define mIRQ3		0x80000000
+/* status register, MIDI IRQ Pending */
+#define MADIFX_mIRQ0		0x10000000
+#define MADIFX_mIRQ1		0x20000000
+#define MADIFX_mIRQ2		0x40000000
+#define MADIFX_mIRQ3		0x80000000
 
 
 #define HDSPM_LineOut (1<<24) /* Analog Out on channel 63/64 on=1, mute=0 */
@@ -1323,13 +1324,13 @@ static snd_pcm_uframes_t madifx_hw_pointer(struct hdspm *hdspm)
 
 static inline void madifx_start_audio(struct hdspm * s)
 {
-	s->control_register |= (MADIFX_IE_AUDIO | HDSPM_Start);
+	s->control_register |= (MADIFX_IE_AUDIO | MADIFX_START);
 	madifx_write(s, MADIFX_CONTROL_REG, s->control_register);
 }
 
 static inline void madifx_stop_audio(struct hdspm * s)
 {
-	s->control_register &= ~(HDSPM_Start | MADIFX_IE_AUDIO);
+	s->control_register &= ~(MADIFX_START | MADIFX_IE_AUDIO);
 	madifx_write(s, MADIFX_CONTROL_REG, s->control_register);
 }
 
@@ -1467,7 +1468,7 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 			   just make a warning an remember setting
 			   for future master mode switching */
 
-			snd_printk(KERN_WARNING "HDSPM: "
+			snd_printk(KERN_WARNING "MADIFX: "
 				   "Warning: device is not running "
 				   "as a clock master.\n");
 			not_set = 1;
@@ -1480,13 +1481,13 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 			if (madifx_autosync_ref(hdspm) ==
 			    HDSPM_AUTOSYNC_FROM_NONE) {
 
-				snd_printk(KERN_WARNING "HDSPM: "
+				snd_printk(KERN_WARNING "MADIFX: "
 					   "Detected no Externel Sync \n");
 				not_set = 1;
 
 			} else if (rate != external_freq) {
 
-				snd_printk(KERN_WARNING "HDSPM: "
+				snd_printk(KERN_WARNING "MADIFX: "
 					   "Warning: No AutoSync source for "
 					   "requested rate\n");
 				not_set = 1;
@@ -4657,11 +4658,8 @@ static struct snd_kcontrol_new snd_madifx_playback_mixer = HDSPM_PLAYBACK_MIXER;
 static int madifx_update_simple_mixer_controls(struct hdspm * hdspm)
 {
 	int i;
-
-	/* FIXME: MADI FX unsupported, yet. */
-	if (MADIFX == hdspm->io_type) {
-		return -EINVAL;
-	}
+    snd_printk(KERN_WARNING "MADIFX: "
+            "updating broken mixer\n");
 
 	for (i = hdspm->ds_out_channels; i < hdspm->ss_out_channels; ++i) {
 		if (hdspm->system_sample_rate > 48000) {
@@ -5407,8 +5405,8 @@ static irqreturn_t snd_madifx_interrupt(int irq, void *dev_id)
 	status = madifx_read(hdspm, HDSPM_statusRegister);
 
 	audio = status & HDSPM_audioIRQPending;
-	midi = status & (HDSPM_midi0IRQPending | HDSPM_midi1IRQPending |
-			HDSPM_midi2IRQPending | HDSPM_midi3IRQPending);
+	midi = status & (MADIFX_mIRQ0 | MADIFX_mIRQ1 |
+			MADIFX_mIRQ2 | MADIFX_mIRQ3);
 
 	/* now = get_cycles(); */
 	/**
@@ -5430,7 +5428,7 @@ static irqreturn_t snd_madifx_interrupt(int irq, void *dev_id)
 	if (!audio && !midi)
 		return IRQ_NONE;
 
-	madifx_write(hdspm, HDSPM_interruptConfirmation, 0);
+	madifx_write(hdspm, MADIFX_IRQ_ACK, 0);
 	hdspm->irq_count++;
 
 
@@ -6732,7 +6730,7 @@ static int __devinit snd_madifx_create_alsa_devices(struct snd_card *card,
 
 	snd_printdd("Update mixer controls...\n");
 	/* FIXME: MADI FX disable, old mixer is broken */
-	//madifx_update_simple_mixer_controls(hdspm);
+	madifx_update_simple_mixer_controls(hdspm);
 
 	snd_printdd("Initializeing complete ???\n");
 
@@ -6766,45 +6764,16 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 	strcpy(card->driver, "MADIFX");
 
 	switch (hdspm->firmware_rev) {
-	case HDSPM_RAYDAT_REV:
-		hdspm->io_type = RayDAT;
-		hdspm->card_name = "RME RayDAT";
-		hdspm->midiPorts = 2;
-		break;
-	case HDSPM_AIO_REV:
-		hdspm->io_type = AIO;
-		hdspm->card_name = "RME AIO";
-		hdspm->midiPorts = 1;
-		break;
-	case HDSPM_MADIFACE_REV:
-		hdspm->io_type = MADIface;
-		hdspm->card_name = "RME MADIface";
-		hdspm->midiPorts = 1;
-		break;
 	case HDSPM_MADIFX_REV:
 		hdspm->io_type = MADIFX;
 		hdspm->card_name = "RME MADI FX";
-		hdspm->midiPorts = 4;  /* FIXME: only guessed */
+		hdspm->midiPorts = 0;  /* FIXME: MIDI handling broken atm */
 		break;
 	default:
-		if ((hdspm->firmware_rev == 0xf0) ||
-			((hdspm->firmware_rev >= 0xe6) &&
-					(hdspm->firmware_rev <= 0xea))) {
-			hdspm->io_type = AES32;
-			hdspm->card_name = "RME AES32";
-			hdspm->midiPorts = 2;
-		} else if ((hdspm->firmware_rev == 0xd2) ||
-			((hdspm->firmware_rev >= 0xc8)  &&
-				(hdspm->firmware_rev <= 0xcf))) {
-			hdspm->io_type = MADI;
-			hdspm->card_name = "RME MADI";
-			hdspm->midiPorts = 3;
-		} else {
-			snd_printk(KERN_ERR
-				"HDSPM: unknown firmware revision %x\n",
+		snd_printk(KERN_ERR
+				"MADIFX: unknown firmware revision %x\n",
 				hdspm->firmware_rev);
-			return -ENODEV;
-		}
+		return -ENODEV;
 	}
 
 	err = pci_enable_device(pci);
@@ -7117,28 +7086,15 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 			madifx_midi_tasklet, (unsigned long) hdspm);
 
 
-	if (hdspm->io_type != MADIface) {
-		hdspm->serial = (madifx_read(hdspm,
-				HDSPM_midiStatusIn0)>>8) & 0xFFFFFF;
-		/* id contains either a user-provided value or the default
-		 * NULL. If it's the default, we're safe to
-		 * fill card->id with the serial number.
-		 *
-		 * If the serial number is 0xFFFFFF, then we're dealing with
-		 * an old PCI revision that comes without a sane number. In
-		 * this case, we don't set card->id to avoid collisions
-		 * when running with multiple cards.
-		 */
-		if (NULL == id[hdspm->dev] && hdspm->serial != 0xFFFFFF) {
-			sprintf(card->id, "MADIFXx%06x", hdspm->serial);
-			snd_card_set_id(card, card->id);
-		}
-	}
+	sprintf(card->id, "MADIFXtest");
+	snd_card_set_id(card, card->id);
 
 	snd_printdd("create alsa devices.\n");
 	err = snd_madifx_create_alsa_devices(card, hdspm);
 	if (err < 0)
 		return err;
+
+	snd_printk(KERN_WARNING "MADIFX: now off to madifx_initialise_midi\n");
 
 	snd_madifx_initialize_midi_flush(hdspm);
 
@@ -7153,7 +7109,7 @@ static int snd_madifx_free(struct hdspm * hdspm)
 
 		/* stop th audio, and cancel all interrupts */
 		hdspm->control_register &=
-		    ~(HDSPM_Start | MADIFX_IE_AUDIO |
+		    ~(MADIFX_START | MADIFX_IE_AUDIO |
 		      MADIFX_IEN0 | MADIFX_IEN1 |
 		      MADIFX_IEN2 | MADIFX_IEN3);
 		madifx_write(hdspm, MADIFX_CONTROL_REG,
