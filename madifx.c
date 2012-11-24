@@ -89,6 +89,7 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 /* --- Write registers. ---
   These are defined as byte-offsets from the iobase value.  */
 
+#define MADIFX_FREQ_REG		(1*4)
 #define MADIFX_SETTINGS_REG	(2*4)
 #define MADIFX_RD_INP_STATUS	(1*4)
 #define MADIFX_MIXER_LIST_VOL	(16384*4)
@@ -99,7 +100,6 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define MADIFX_CONTROL_REG	     0
 #define MADIFX_IRQ_ACK           (3*4)
 #define HDSPM_control2Reg	     256  /* not in specs ???????? */
-#define HDSPM_freqReg                256  /* for AES32 */
 #define HDSPM_midiDataOut0	     352  /* just believe in old code */
 #define HDSPM_midiDataOut1	     356
 #define HDSPM_eeprom_wr		     384  /* for AES32 */
@@ -209,6 +209,42 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define MADIFX_MADIInput0		0x10000
 #define MADIFX_MADIInput1		0x20000
 
+/* control register bits */
+
+#define MADIFX_START				0x00000001
+#define MADIFX_freq0				0x00000002
+#define MADIFX_freq1				0x00000004
+#define MADIFX_freq2				0x00000008
+#define MADIFX_freq3				0x00000010
+#define MADIFX_BUF_SIZ_0			0x00000020
+#define MADIFX_BUF_SIZ_1			0x00000040
+#define MADIFX_BUF_SIZ_2			0x00000080
+#define MADIFX_LAT_0				0x00000100
+#define MADIFX_LAT_1				0x00000200
+#define MADIFX_LAT_2				0x00000400
+#define MADIFX_LAT_3				0x00000800
+#define MADIFX_IE_AUDIO			0x00001000
+#define MADIFX_IEN0				0x00002000
+#define MADIFX_IEN1				0x00004000
+#define MADIFX_IEN2				0x00008000
+#define MADIFX_IEN3				0x00010000
+#define MADIFX_float_format		0x00020000
+#define MADIFX_CLR_TMS				0x00040000
+#define MADIFX_Dolby				0x00080000
+
+#define MADIFX_kFrequencyMask	(MADIFX_freq0 + MADIFX_freq1 + MADIFX_freq2 + MADIFX_freq3)
+
+enum {
+	MADIFX_kFrequency32kHz		= 0,
+	MADIFX_kFrequency44_1kHz	= MADIFX_freq0,
+	MADIFX_kFrequency48kHz		= MADIFX_freq1,
+	MADIFX_kFrequency64kHz		= MADIFX_freq2 + 0,
+	MADIFX_kFrequency88_2kHz	= MADIFX_freq2 + MADIFX_freq0,
+	MADIFX_kFrequency96kHz		= MADIFX_freq2 + MADIFX_freq1,
+	MADIFX_kFrequency128kHz		= MADIFX_freq3 + MADIFX_freq2 + 0,
+	MADIFX_kFrequency176_4kHz	= MADIFX_freq3 + MADIFX_freq2 + MADIFX_freq0,
+	MADIFX_kFrequency192kHz		= MADIFX_freq3 + MADIFX_freq2 + MADIFX_freq1
+};
 
 
 /* the meters are regular i/o-mapped registers, but offset
@@ -230,7 +266,6 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define HDSPM_MADI_OUTPUT_RMS_H		7680
 
 /* --- Control Register bits --------- */
-#define MADIFX_START                (1<<0) /* start engine */
 
 #define HDSPM_Latency0             (1<<1) /* buffer size = 2^n */
 #define HDSPM_Latency1             (1<<2) /* where n is defined */
@@ -240,7 +275,6 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define HDSPM_c0Master		0x1    /* Master clock bit in settings
 					  register [RayDAT, AIO] */
 
-#define MADIFX_IE_AUDIO		0x1000 /* Audio Interrupt enable */
 
 #define HDSPM_Frequency0  (1<<6)  /* 0=44.1kHz/88.2kHz 1=48kHz/96kHz */
 #define HDSPM_Frequency1  (1<<7)  /* 0=32kHz/64kHz */
@@ -1468,7 +1502,7 @@ static void madifx_set_dds_value(struct hdspm *hdspm, int rate)
 	n = div_u64(n, rate);
 	/* n should be less than 2^32 for being written to FREQ register */
 	snd_BUG_ON(n >> 32);
-	madifx_write(hdspm, HDSPM_freqReg, (u32)n);
+	madifx_write(hdspm, MADIFX_FREQ_REG, (u32)n);
 }
 
 /* dummy set rate lets see what happens */
@@ -1483,7 +1517,7 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 	   it (e.g. during module initialization).
 	 */
 
-	if (!(hdspm->control_register & HDSPM_ClockModeMaster)) {
+	if (1 == madifx_system_clock_mode(hdspm)) {
 
 		/* SLAVE --- */
 		if (called_internally) {
@@ -1547,31 +1581,31 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 
 	switch (rate) {
 	case 32000:
-		rate_bits = HDSPM_Frequency32KHz;
+		rate_bits = MADIFX_kFrequency32kHz;
 		break;
 	case 44100:
-		rate_bits = HDSPM_Frequency44_1KHz;
+		rate_bits = MADIFX_kFrequency44_1kHz;
 		break;
 	case 48000:
-		rate_bits = HDSPM_Frequency48KHz;
+		rate_bits = MADIFX_kFrequency48kHz;
 		break;
 	case 64000:
-		rate_bits = HDSPM_Frequency64KHz;
+		rate_bits = MADIFX_kFrequency64kHz;
 		break;
 	case 88200:
-		rate_bits = HDSPM_Frequency88_2KHz;
+		rate_bits = MADIFX_kFrequency88_2kHz;
 		break;
 	case 96000:
-		rate_bits = HDSPM_Frequency96KHz;
+		rate_bits = MADIFX_kFrequency96kHz;
 		break;
 	case 128000:
-		rate_bits = HDSPM_Frequency128KHz;
+		rate_bits = MADIFX_kFrequency128kHz;
 		break;
 	case 176400:
-		rate_bits = HDSPM_Frequency176_4KHz;
+		rate_bits = MADIFX_kFrequency176_4kHz;
 		break;
 	case 192000:
-		rate_bits = HDSPM_Frequency192KHz;
+		rate_bits = MADIFX_kFrequency192kHz;
 		break;
 	default:
 		return -EINVAL;
@@ -1589,16 +1623,11 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 		return -EBUSY;
 	}
 
-	hdspm->control_register &= ~HDSPM_FrequencyMask;
+	hdspm->control_register &= ~MADIFX_kFrequencyMask;
 	hdspm->control_register |= rate_bits;
 	madifx_write(hdspm, MADIFX_CONTROL_REG, hdspm->control_register);
 
-	/* For AES32, need to set DDS value in FREQ register
-	   For MADI, also apparently */
 	madifx_set_dds_value(hdspm, rate);
-
-	if (AES32 == hdspm->io_type && rate != current_rate)
-		madifx_write(hdspm, HDSPM_eeprom_wr, 0);
 
 	hdspm->system_sample_rate = rate;
 
