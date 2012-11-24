@@ -5849,9 +5849,6 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 				/* FIXME: No idea if really needed */
 				break;
         }
-
-		info->offset = hdspm->channel_map_out[info->channel] *
-			HDSPM_CHANNEL_BUFFER_BYTES;
 	} else {
 		if (snd_BUG_ON(info->channel >= hdspm->max_channels_in)) {
 			snd_printk(KERN_INFO "snd_madifx_channel_info: input channel out of range (%d)\n", info->channel);
