@@ -760,165 +760,6 @@ static char *texts_ports_aes32[] = {
 	"AES.15", "AES.16"
 };
 
-/* These tables map the ALSA channels 1..N to the channels that we
-   need to use in order to find the relevant channel buffer. RME
-   refers to this kind of mapping as between "the ADAT channel and
-   the DMA channel." We index it using the logical audio channel,
-   and the value is the DMA channel (i.e. channel buffer number)
-   where the data for that channel can be read/written from/to.
-*/
-
-static char channel_map_unity_ss[HDSPM_MAX_CHANNELS] = {
-	0, 1, 2, 3, 4, 5, 6, 7,
-	8, 9, 10, 11, 12, 13, 14, 15,
-	16, 17, 18, 19, 20, 21, 22, 23,
-	24, 25, 26, 27, 28, 29, 30, 31,
-	32, 33, 34, 35, 36, 37, 38, 39,
-	40, 41, 42, 43, 44, 45, 46, 47,
-	48, 49, 50, 51, 52, 53, 54, 55,
-	56, 57, 58, 59, 60, 61, 62, 63
-};
-
-static char channel_map_raydat_ss[HDSPM_MAX_CHANNELS] = {
-	4, 5, 6, 7, 8, 9, 10, 11,	/* ADAT 1 */
-	12, 13, 14, 15, 16, 17, 18, 19,	/* ADAT 2 */
-	20, 21, 22, 23, 24, 25, 26, 27,	/* ADAT 3 */
-	28, 29, 30, 31, 32, 33, 34, 35,	/* ADAT 4 */
-	0, 1,			/* AES */
-	2, 3,			/* SPDIF */
-	-1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-};
-
-static char channel_map_raydat_ds[HDSPM_MAX_CHANNELS] = {
-	4, 5, 6, 7,		/* ADAT 1 */
-	8, 9, 10, 11,		/* ADAT 2 */
-	12, 13, 14, 15,		/* ADAT 3 */
-	16, 17, 18, 19,		/* ADAT 4 */
-	0, 1,			/* AES */
-	2, 3,			/* SPDIF */
-	-1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-};
-
-static char channel_map_raydat_qs[HDSPM_MAX_CHANNELS] = {
-	4, 5,			/* ADAT 1 */
-	6, 7,			/* ADAT 2 */
-	8, 9,			/* ADAT 3 */
-	10, 11,			/* ADAT 4 */
-	0, 1,			/* AES */
-	2, 3,			/* SPDIF */
-	-1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-};
-
-static char channel_map_aio_in_ss[HDSPM_MAX_CHANNELS] = {
-	0, 1,			/* line in */
-	8, 9,			/* aes in, */
-	10, 11,			/* spdif in */
-	12, 13, 14, 15, 16, 17, 18, 19,	/* ADAT in */
-	-1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-};
-
-static char channel_map_aio_out_ss[HDSPM_MAX_CHANNELS] = {
-	0, 1,			/* line out */
-	8, 9,			/* aes out */
-	10, 11,			/* spdif out */
-	12, 13, 14, 15, 16, 17, 18, 19,	/* ADAT out */
-	6, 7,			/* phone out */
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-};
-
-static char channel_map_aio_in_ds[HDSPM_MAX_CHANNELS] = {
-	0, 1,			/* line in */
-	8, 9,			/* aes in */
-	10, 11,			/* spdif in */
-	12, 14, 16, 18,		/* adat in */
-	-1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1
-};
-
-static char channel_map_aio_out_ds[HDSPM_MAX_CHANNELS] = {
-	0, 1,			/* line out */
-	8, 9,			/* aes out */
-	10, 11,			/* spdif out */
-	12, 14, 16, 18,		/* adat out */
-	6, 7,			/* phone out */
-	-1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1
-};
-
-static char channel_map_aio_in_qs[HDSPM_MAX_CHANNELS] = {
-	0, 1,			/* line in */
-	8, 9,			/* aes in */
-	10, 11,			/* spdif in */
-	12, 16,			/* adat in */
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1
-};
-
-static char channel_map_aio_out_qs[HDSPM_MAX_CHANNELS] = {
-	0, 1,			/* line out */
-	8, 9,			/* aes out */
-	10, 11,			/* spdif out */
-	12, 16,			/* adat out */
-	6, 7,			/* phone out */
-	-1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1
-};
-
-static char channel_map_aes32[HDSPM_MAX_CHANNELS] = {
-	0, 1, 2, 3, 4, 5, 6, 7,
-	8, 9, 10, 11, 12, 13, 14, 15,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1
-};
 
 struct madifx_midi {
 	struct hdspm *hdspm;
@@ -977,12 +818,6 @@ struct hdspm {
 
 	unsigned char max_channels_in;
 	unsigned char max_channels_out;
-
-	signed char *channel_map_in;
-	signed char *channel_map_out;
-
-	signed char *channel_map_in_ss, *channel_map_in_ds, *channel_map_in_qs;
-	signed char *channel_map_out_ss, *channel_map_out_ds, *channel_map_out_qs;
 
 	char **port_names_in;
 	char **port_names_out;
@@ -1632,24 +1467,18 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 	hdspm->system_sample_rate = rate;
 
 	if (rate <= 48000) {
-		hdspm->channel_map_in = hdspm->channel_map_in_ss;
-		hdspm->channel_map_out = hdspm->channel_map_out_ss;
 		hdspm->max_channels_in = hdspm->ss_in_channels;
 		hdspm->max_channels_out = hdspm->ss_out_channels;
 		hdspm->port_names_in = hdspm->port_names_in_ss;
 		hdspm->port_names_out = hdspm->port_names_out_ss;
 		hdspm->speedmode = ss;
 	} else if (rate <= 96000) {
-		hdspm->channel_map_in = hdspm->channel_map_in_ds;
-		hdspm->channel_map_out = hdspm->channel_map_out_ds;
 		hdspm->max_channels_in = hdspm->ds_in_channels;
 		hdspm->max_channels_out = hdspm->ds_out_channels;
 		hdspm->port_names_in = hdspm->port_names_in_ds;
 		hdspm->port_names_out = hdspm->port_names_out_ds;
 		hdspm->speedmode = ds;
 	} else {
-		hdspm->channel_map_in = hdspm->channel_map_in_qs;
-		hdspm->channel_map_out = hdspm->channel_map_out_qs;
 		hdspm->max_channels_in = hdspm->qs_in_channels;
 		hdspm->max_channels_out = hdspm->qs_out_channels;
 		hdspm->port_names_in = hdspm->port_names_in_qs;
@@ -6648,9 +6477,7 @@ static int __devinit snd_madifx_create_hwdep(struct snd_card *card,
 static int __devinit snd_madifx_preallocate_memory(struct hdspm *hdspm)
 {
 	int err;
-	int stream;
 	struct snd_pcm *pcm;
-	struct snd_pcm_substream *substream;
 	size_t wanted;
 
 	pcm = hdspm->pcm;
@@ -6928,12 +6755,6 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 		hdspm->ds_in_channels = hdspm->ds_out_channels = AES32_CHANNELS;
 		hdspm->qs_in_channels = hdspm->qs_out_channels = AES32_CHANNELS;
 
-		hdspm->channel_map_in_ss = hdspm->channel_map_out_ss =
-			channel_map_aes32;
-		hdspm->channel_map_in_ds = hdspm->channel_map_out_ds =
-			channel_map_aes32;
-		hdspm->channel_map_in_qs = hdspm->channel_map_out_qs =
-			channel_map_aes32;
 		hdspm->port_names_in_ss = hdspm->port_names_out_ss =
 			texts_ports_aes32;
 		hdspm->port_names_in_ds = hdspm->port_names_out_ds =
@@ -6945,8 +6766,6 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 			AES32_CHANNELS;
 		hdspm->port_names_in = hdspm->port_names_out =
 			texts_ports_aes32;
-		hdspm->channel_map_in = hdspm->channel_map_out =
-			channel_map_aes32;
 
 		break;
 
@@ -6958,13 +6777,6 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 			MADI_DS_CHANNELS;
 		hdspm->qs_in_channels = hdspm->qs_out_channels =
 			MADI_QS_CHANNELS;
-
-		hdspm->channel_map_in_ss = hdspm->channel_map_out_ss =
-			channel_map_unity_ss;
-		hdspm->channel_map_in_ds = hdspm->channel_map_out_ds =
-			channel_map_unity_ss;
-		hdspm->channel_map_in_qs = hdspm->channel_map_out_qs =
-			channel_map_unity_ss;
 
 		hdspm->port_names_in_ss = hdspm->port_names_out_ss =
 			texts_ports_madi;
@@ -6996,14 +6808,6 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 		hdspm->ds_out_channels = AIO_OUT_DS_CHANNELS;
 		hdspm->qs_out_channels = AIO_OUT_QS_CHANNELS;
 
-		hdspm->channel_map_out_ss = channel_map_aio_out_ss;
-		hdspm->channel_map_out_ds = channel_map_aio_out_ds;
-		hdspm->channel_map_out_qs = channel_map_aio_out_qs;
-
-		hdspm->channel_map_in_ss = channel_map_aio_in_ss;
-		hdspm->channel_map_in_ds = channel_map_aio_in_ds;
-		hdspm->channel_map_in_qs = channel_map_aio_in_qs;
-
 		hdspm->port_names_in_ss = texts_ports_aio_in_ss;
 		hdspm->port_names_out_ss = texts_ports_aio_out_ss;
 		hdspm->port_names_in_ds = texts_ports_aio_in_ds;
@@ -7023,15 +6827,6 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 
 		hdspm->max_channels_in = RAYDAT_SS_CHANNELS;
 		hdspm->max_channels_out = RAYDAT_SS_CHANNELS;
-
-		hdspm->channel_map_in_ss = hdspm->channel_map_out_ss =
-			channel_map_raydat_ss;
-		hdspm->channel_map_in_ds = hdspm->channel_map_out_ds =
-			channel_map_raydat_ds;
-		hdspm->channel_map_in_qs = hdspm->channel_map_out_qs =
-			channel_map_raydat_qs;
-		hdspm->channel_map_in = hdspm->channel_map_out =
-			channel_map_raydat_ss;
 
 		hdspm->port_names_in_ss = hdspm->port_names_out_ss =
 			texts_ports_raydat_ss;
@@ -7142,8 +6937,6 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 	err = snd_madifx_create_alsa_devices(card, hdspm);
 	if (err < 0)
 		return err;
-
-	snd_printk(KERN_WARNING "MADIFX: now off to madifx_initialise_midi\n");
 
 	snd_madifx_initialize_midi_flush(hdspm);
 
