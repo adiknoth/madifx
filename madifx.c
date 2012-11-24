@@ -90,6 +90,7 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
   These are defined as byte-offsets from the iobase value.  */
 
 #define MADIFX_SETTINGS_REG	(2*4)
+#define MADIFX_RD_INP_STATUS	(1*4)
 #define MADIFX_MIXER_LIST_VOL	(16384*4)
 #define MADIFX_MIXER_LIST_CH	(20480*4)
 #define MADIFX_WR_OUTPUT_GAIN	((24576+256)*4)
@@ -185,6 +186,29 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define HDSPM_midiStatusIn1   396
 #define HDSPM_midiStatusIn2   404
 #define HDSPM_midiStatusIn3   408
+
+
+/* input status */
+
+#define MADIFX_madi1_lock		0x0001
+#define MADIFX_madi2_lock		0x0002
+#define MADIFX_madi3_lock		0x0004
+#define MADIFX_aes_lock		0x0008
+#define MADIFX_word_lock		0x0010
+#define MADIFX_madi1_sync		0x0020
+#define MADIFX_madi2_sync		0x0040
+#define MADIFX_madi3_sync		0x0080
+#define MADIFX_word_sync		0x0100
+#define MADIFX_aes_sync		0x0200
+#define MADIFX_madi1_rx_64ch	0x0400
+#define MADIFX_madi2_rx_64ch	0x0800
+#define MADIFX_madi3_rx_64ch	0x1000
+#define MADIFX_SelSyncRef0		0x2000
+#define MADIFX_SelSyncRef1		0x4000
+#define MADIFX_SelSyncRef2		0x8000
+#define MADIFX_MADIInput0		0x10000
+#define MADIFX_MADIInput1		0x20000
+
 
 
 /* the meters are regular i/o-mapped registers, but offset
@@ -2309,20 +2333,16 @@ static int snd_madifx_get_autosync_sample_rate(struct snd_kcontrol *kcontrol,
  **/
 static int madifx_system_clock_mode(struct hdspm *hdspm)
 {
-	switch (hdspm->io_type) {
-	case AIO:
-	case RayDAT:
-		if (hdspm->settings_register & HDSPM_c0Master)
-			return 0;
-		break;
+	u32 status;
 
-	default:
-		if (hdspm->control_register & HDSPM_ClockModeMaster)
-			return 0;
+	status = madifx_read(hdspm, MADIFX_RD_INP_STATUS);
+	if ((status & (MADIFX_SelSyncRef0 * 7)) == (MADIFX_SelSyncRef0 * 7)) {
+		return 0;
 	}
 
 	return 1;
 }
+
 
 
 /**
@@ -2340,6 +2360,9 @@ static void madifx_set_system_clock_mode(struct hdspm *hdspm, int mode)
 			hdspm->settings_register &= ~HDSPM_c0Master;
 
 		madifx_write(hdspm, MADIFX_SETTINGS_REG, hdspm->settings_register);
+		break;
+	case MADIFX:
+		/* FIXME: we don't know yet how to set the clock mode */
 		break;
 
 	default:
