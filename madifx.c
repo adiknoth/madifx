@@ -91,10 +91,11 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 
 #define MADIFX_FREQ_REG		(1*4)
 #define MADIFX_SETTINGS_REG	(2*4)
-#define MADIFX_RD_INP_STATUS	(1*4)
 #define MADIFX_MIXER_LIST_VOL	(16384*4)
 #define MADIFX_MIXER_LIST_CH	(20480*4)
 #define MADIFX_WR_OUTPUT_GAIN	((24576+256)*4)
+
+#define MADIFX_SAMPLE_FRAMES_PER_BUFFER		8192
 
 
 #define MADIFX_CONTROL_REG	     0
@@ -187,6 +188,28 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define HDSPM_midiStatusIn2   404
 #define HDSPM_midiStatusIn3   408
 
+#define MADIFX_RD_STATUS		(0*4)
+#define MADIFX_RD_INP_STATUS	(1*4)
+#define MADIFX_RD_INP_FREQ		(2*4)
+#define MADIFX_RD_PLL_FREQ		(3*4)
+#define MADIFX_RD_VERSION		(4*4) /* card_type(7..0) & "0000" & build(19..0) */
+#define MADIFX_RD_FLASH			(5*4)
+#define MADIFX_RD_BARCODE0		(6*4)
+#define MADIFX_RD_BARCODE1		(7*4)
+#define MADIFX_RD_DSP_DATA		(8*4)
+#define MADIFX_RD_DSP_STATUS	(9*4)
+#define MADIFX_midi_in0_data	(12*4)
+#define MADIFX_midi_in1_data	(13*4)
+#define MADIFX_midi_in2_data	(14*4)
+#define MADIFX_midi_in3_data	(15*4)
+#define MADIFX_midi_out0_status	(16*4)
+#define MADIFX_midi_out1_status	(17*4)
+#define MADIFX_midi_out2_status	(18*4)
+#define MADIFX_midi_out3_status	(19*4)
+#define MADIFX_midi_in0_status	(20*4)
+#define MADIFX_midi_in1_status	(21*4)
+#define MADIFX_midi_in2_status	(22*4)
+#define MADIFX_midi_in3_status	(23*4)
 
 /* input status */
 
@@ -233,6 +256,7 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define MADIFX_Dolby				0x00080000
 
 #define MADIFX_kFrequencyMask	(MADIFX_freq0 + MADIFX_freq1 + MADIFX_freq2 + MADIFX_freq3)
+#define MADIFX_kBufferPositionMask	0xFFF0
 
 enum {
 	MADIFX_kFrequency32kHz		= 0,
@@ -1193,27 +1217,24 @@ static inline void madifx_compute_period_size(struct hdspm *hdspm)
 }
 
 
+/* position of the hardware pointer in the buffer */
 static snd_pcm_uframes_t madifx_hw_pointer(struct hdspm *hdspm)
 {
-	int position;
+	u32 position;
 
-	position = madifx_read(hdspm, HDSPM_statusRegister);
+	position = madifx_read(hdspm, MADIFX_RD_STATUS);
 
-	switch (hdspm->io_type) {
-	case RayDAT:
-	case AIO:
-	case MADIFX:
-		position &= HDSPM_BufferPositionMask;
-		position /= 4; /* Bytes per sample */
-		break;
-	default:
-		position = (position & HDSPM_BufferID) ?
-			(hdspm->period_bytes / 4) : 0;
-	}
+	position &= MADIFX_kBufferPositionMask;
+	position /= 4; /* Bytes per sample */
+	position >>= 4;
+	position *= 4; /* this might be wrong */
+#if 0
+	position -= 4; /* safety offset */
+#endif
+	position &= (MADIFX_SAMPLE_FRAMES_PER_BUFFER-1);
 
 	return position;
 }
-
 
 static inline void madifx_start_audio(struct hdspm * s)
 {
