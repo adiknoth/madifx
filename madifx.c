@@ -1275,25 +1275,42 @@ static void madifx_silence_playback(struct hdspm *hdspm)
 static int madifx_set_interrupt_interval(struct hdspm *s, unsigned int frames)
 {
 	int n;
+	snd_printk(KERN_INFO "MADIFX: latency request for %i frames\n", frames);
 
 	spin_lock_irq(&s->lock);
 
 	/* FIXME: We have four bits, but we don't know the mapping to frames,
 	 * yet.
+	 * LAT_3 is 2048
+	 * LAT_2 is 128
+	 * LAT_1 is 32
+	 * LAT_0 is 16
+	 *
+	 * 2^(n+4), encode n to 4 bits
 	 */
 	n = 0;
+	frames >>= 6;
 	while (frames) {
 		n++;
 		frames >>= 1;
 	}
 
+	snd_printk(KERN_INFO "MADIFX: setting %i frames equals %i is %i\n", frames,
+			n, madifx_decode_latency((madifx_encode_latency(n))));
 
 	s->control_register &= ~MADIFX_LatencyMask;
 	s->control_register |= madifx_encode_latency(n);
 
+	snd_printk(KERN_INFO "MADIFX: setting LAT_0 to %i\n", s->control_register & MADIFX_LAT_0);
+	snd_printk(KERN_INFO "MADIFX: setting LAT_1 to %i\n", s->control_register & MADIFX_LAT_1);
+	snd_printk(KERN_INFO "MADIFX: setting LAT_2 to %i\n", s->control_register & MADIFX_LAT_2);
+	snd_printk(KERN_INFO "MADIFX: setting LAT_3 to %i\n", s->control_register & MADIFX_LAT_3);
+
 	madifx_write(s, MADIFX_CONTROL_REG, s->control_register);
 
 	madifx_compute_period_size(s);
+
+	snd_printk(KERN_INFO "MADIFX: final latency %i\n", madifx_get_latency(s));
 
 	spin_unlock_irq(&s->lock);
 
