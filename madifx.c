@@ -5222,8 +5222,9 @@ static int snd_madifx_set_defaults(struct hdspm * hdspm)
 			HDSPM_Professional;  /* Professional mode */
 		break;
 	case MADIFX:
-		/* LAT_3+BUF_SIZ_1+BUF_SIZ_2+freq1; */
-		hdspm->control_register = 0x800 + 0x40 + 0x80 + 0x4;
+		/* OSX: LAT_3+BUF_SIZ_1+BUF_SIZ_2+freq1; */
+		hdspm->control_register = MADIFX_LAT_3 + MADIFX_BUF_SIZ_1 +
+			MADIFX_BUF_SIZ_2 + MADIFX_freq1;
 		/* PRO+madi1_tx_64ch+madi2_tx_64ch+madi3_tx_64ch; */
 		hdspm->settings_register = 0x8 + 0x80 + 0x100 + 0x200;
 		break;
@@ -6043,16 +6044,6 @@ static int snd_madifx_playback_open(struct snd_pcm_substream *substream)
 	snd_pcm_hw_constraint_pow2(runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_SIZE);
 
 	switch (hdspm->io_type) {
-	case AIO:
-	case RayDAT:
-		snd_pcm_hw_constraint_minmax(runtime,
-					     SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
-					     32, 4096);
-		/* RayDAT & AIO have a fixed buffer of 16384 samples per channel */
-		snd_pcm_hw_constraint_minmax(runtime,
-					     SNDRV_PCM_HW_PARAM_BUFFER_SIZE,
-					     16384, 16384);
-		break;
 	case MADIFX:
 		snd_pcm_hw_constraint_minmax(runtime,
 					     SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
@@ -6126,15 +6117,6 @@ static int snd_madifx_capture_open(struct snd_pcm_substream *substream)
 	snd_pcm_hw_constraint_pow2(runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_SIZE);
 
 	switch (hdspm->io_type) {
-	case AIO:
-	case RayDAT:
-		snd_pcm_hw_constraint_minmax(runtime,
-					     SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
-					     32, 4096);
-		snd_pcm_hw_constraint_minmax(runtime,
-					     SNDRV_PCM_HW_PARAM_BUFFER_SIZE,
-					     16384, 16384);
-		break;
 	case MADIFX:
 		snd_pcm_hw_constraint_minmax(runtime,
 					     SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
