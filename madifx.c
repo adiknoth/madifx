@@ -270,6 +270,24 @@ enum {
 	MADIFX_kFrequency192kHz		= MADIFX_freq3 + MADIFX_freq2 + MADIFX_freq1
 };
 
+/* settings register bits */
+
+#define MADIFX_SyncRef0		0x00000001
+#define MADIFX_SyncRef1		0x00000002
+#define MADIFX_SyncRef2		0x00000004
+#define MADIFX_PRO		0x00000008
+#define MADIFX_DSP_EN		0x00000010
+#define MADIFX_WCK_TERM		0x00000020
+#define MADIFX_WCK48		0x00000040
+#define MADIFX_madi1_tx_64ch	0x00000080
+#define MADIFX_madi2_tx_64ch	0x00000100
+#define MADIFX_madi3_tx_64ch	0x00000200
+#define MADIFX_madi1_smux	0x00000400
+#define MADIFX_madi2_smux	0x00000800
+#define MADIFX_madi3_smux	0x00001000
+#define MADIFX_redundancy_mode	0x00002000
+#define MADIFX_mirror_madi_out	0x00004000
+
 
 /* the meters are regular i/o-mapped registers, but offset
    considerably from the rest. the peak registers are reset
@@ -290,10 +308,6 @@ enum {
 #define HDSPM_MADI_OUTPUT_RMS_H		7680
 
 /* --- Control Register bits --------- */
-
-#define HDSPM_Latency0             (1<<1) /* buffer size = 2^n */
-#define HDSPM_Latency1             (1<<2) /* where n is defined */
-#define HDSPM_Latency2             (1<<3) /* by Latency{2,1,0} */
 
 #define HDSPM_ClockModeMaster      (1<<4) /* 1=Master, 0=Autosync */
 #define HDSPM_c0Master		0x1    /* Master clock bit in settings
@@ -344,7 +358,6 @@ enum {
 
 
 #define HDSPM_LineOut (1<<24) /* Analog Out on channel 63/64 on=1, mute=0 */
-#define HDSPe_FLOAT_FORMAT         0x2000000
 
 #define HDSPM_DS_DoubleWire (1<<26) /* AES32 ONLY */
 #define HDSPM_QS_DoubleWire (1<<27) /* AES32 ONLY */
@@ -353,7 +366,7 @@ enum {
 #define HDSPM_wclk_sel (1<<30)
 
 /* --- bit helper defines */
-#define HDSPM_LatencyMask    (HDSPM_Latency0|HDSPM_Latency1|HDSPM_Latency2)
+#define MADIFX_LatencyMask  (MADIFX_LAT_0|MADIFX_LAT_1|MADIFX_LAT_2|MADIFX_LAT_3)
 #define HDSPM_FrequencyMask  (HDSPM_Frequency0|HDSPM_Frequency1|\
 			      HDSPM_DoubleSpeed|HDSPM_QuadSpeed)
 #define HDSPM_InputMask      (HDSPM_InputSelect0|HDSPM_InputSelect1)
@@ -403,8 +416,8 @@ enum {
 #define HDSPM_OPTICAL 0		/* optical   */
 #define HDSPM_COAXIAL 1		/* BNC */
 
-#define madifx_encode_latency(x)       (((x)<<1) & HDSPM_LatencyMask)
-#define madifx_decode_latency(x)       ((((x) & HDSPM_LatencyMask)>>1))
+#define madifx_encode_latency(x)       (((x)<<8) & MADIFX_LatencyMask)
+#define madifx_decode_latency(x)       ((((x) & MADIFX_LatencyMask)>>8))
 
 #define madifx_encode_in(x) (((x)&0x3)<<14)
 #define madifx_decode_in(x) (((x)>>14)&0x3)
@@ -1197,17 +1210,7 @@ static int madifx_get_latency(struct hdspm *hdspm)
 
 	n = madifx_decode_latency(hdspm->control_register);
 
-	/* Special case for new RME cards with 32 samples period size.
-	 * The three latency bits in the control register
-	 * (HDSP_LatencyMask) encode latency values of 64 samples as
-	 * 0, 128 samples as 1 ... 4096 samples as 6. For old cards, 7
-	 * denotes 8192 samples, but on new cards like RayDAT or AIO,
-	 * it corresponds to 32 samples.
-	 */
-	if (7 == n)
-		n = -1;
-
-	return 1 << (n + 6);
+	return 1 << (n + 5);
 }
 
 /* Latency function */
@@ -1264,28 +1267,17 @@ static int madifx_set_interrupt_interval(struct hdspm *s, unsigned int frames)
 
 	spin_lock_irq(&s->lock);
 
-	if (32 == frames) {
-		/* Special case for new RME cards like RayDAT/AIO which
-		 * support period sizes of 32 samples. Since latency is
-		 * encoded in the three bits of HDSP_LatencyMask, we can only
-		 * have values from 0 .. 7. While 0 still means 64 samples and
-		 * 6 represents 4096 samples on all cards, 7 represents 8192
-		 * on older cards and 32 samples on new cards.
-		 *
-		 * In other words, period size in samples is calculated by
-		 * 2^(n+6) with n ranging from 0 .. 7.
-		 */
-		n = 7;
-	} else {
-		frames >>= 7;
-		n = 0;
-		while (frames) {
-			n++;
-			frames >>= 1;
-		}
+	/* FIXME: We have four bits, but we don't know the mapping to frames,
+	 * yet.
+	 */
+	n = 0;
+	while (frames) {
+		n++;
+		frames >>= 1;
 	}
 
-	s->control_register &= ~HDSPM_LatencyMask;
+
+	s->control_register &= ~MADIFX_LatencyMask;
 	s->control_register |= madifx_encode_latency(n);
 
 	madifx_write(s, MADIFX_CONTROL_REG, s->control_register);
@@ -1479,11 +1471,21 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 		return -EBUSY;
 	}
 
+#if 0
+	/* Maybe we need to set single-speed. Maybe not. */
+	if (HDSPM_SPEED_SINGLE == target_speed) {
+		hdspm->settings_register |= MADIFX_WCK48;
+		madifx_write(hdspm, MADIFX_SETTINGS_REG, hdspm->settings_register);
+	}
+#endif
+
+	madifx_set_dds_value(hdspm, rate);
+
 	hdspm->control_register &= ~MADIFX_kFrequencyMask;
 	hdspm->control_register |= rate_bits;
 	madifx_write(hdspm, MADIFX_CONTROL_REG, hdspm->control_register);
 
-	madifx_set_dds_value(hdspm, rate);
+
 
 	hdspm->system_sample_rate = rate;
 
@@ -2216,6 +2218,7 @@ static int madifx_system_clock_mode(struct hdspm *hdspm)
 
 	status = madifx_read(hdspm, MADIFX_RD_INP_STATUS);
 	if ((status & (MADIFX_SelSyncRef0 * 7)) == (MADIFX_SelSyncRef0 * 7)) {
+		snd_printk(KERN_INFO "MADFIX: We are clock master\n");
 		return 0;
 	}
 
@@ -5604,15 +5607,15 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 
 	/* Switch to native float format if requested */
 	if (SNDRV_PCM_FORMAT_FLOAT_LE == params_format(params)) {
-		if (!(hdspm->control_register & HDSPe_FLOAT_FORMAT))
+		if (!(hdspm->control_register & MADIFX_float_format))
 			snd_printk(KERN_INFO "hdspm: Switching to native 32bit LE float format.\n");
 
-		hdspm->control_register |= HDSPe_FLOAT_FORMAT;
+		hdspm->control_register |= MADIFX_float_format;
 	} else if (SNDRV_PCM_FORMAT_S32_LE == params_format(params)) {
-		if (hdspm->control_register & HDSPe_FLOAT_FORMAT)
+		if (hdspm->control_register & MADIFX_float_format)
 			snd_printk(KERN_INFO "hdspm: Switching to native 32bit LE integer format.\n");
 
-		hdspm->control_register &= ~HDSPe_FLOAT_FORMAT;
+		hdspm->control_register &= ~MADIFX_float_format;
 	}
 	madifx_write(hdspm, MADIFX_CONTROL_REG, hdspm->control_register);
 
