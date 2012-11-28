@@ -1239,9 +1239,8 @@ static snd_pcm_uframes_t madifx_hw_pointer(struct hdspm *hdspm)
 	position = madifx_read(hdspm, MADIFX_RD_STATUS);
 
 	position &= MADIFX_kBufferPositionMask;
-	position /= 4; /* Bytes per sample */
 	position >>= 4;
-	position *= 4; /* this might be wrong */
+	position *= 4;
 #if 0
 	position -= 4; /* safety offset */
 #endif
