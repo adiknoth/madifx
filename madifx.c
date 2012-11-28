@@ -4492,7 +4492,6 @@ static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 };
 #else
 static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
-	HDSPM_MIXER("Mixer", 0),
 	HDSPM_SYSTEM_SAMPLE_RATE("System Sample Rate", 0),
 	MADIFX_CLOCK_SELECT("Clock Selection", 0)
 };
@@ -4595,6 +4594,8 @@ static int snd_madifx_create_controls(struct snd_card *card,
 	}
 
 
+	/* FIXME: MADI FX, we don't know how to mix, yet */
+#if 0
 	/* create simple 1:1 playback mixer controls */
 	snd_madifx_playback_mixer.name = "Chn";
 	if (hdspm->system_sample_rate >= 128000) {
@@ -4612,6 +4613,7 @@ static int snd_madifx_create_controls(struct snd_card *card,
 			return err;
 		hdspm->playback_mixer_ctls[idx] = kctl;
 	}
+#endif
 
 
 	if (hdspm->tco) {
@@ -6578,8 +6580,10 @@ static int __devinit snd_madifx_create_alsa_devices(struct snd_card *card,
 		return err;
 
 	snd_printdd("Update mixer controls...\n");
+#if 0
 	/* FIXME: MADI FX disable, old mixer is broken */
 	madifx_update_simple_mixer_controls(hdspm);
+#endif
 
 	snd_printdd("Initializeing complete ???\n");
 
