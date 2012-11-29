@@ -1,27 +1,13 @@
 /*
- *   ALSA driver for RME Hammerfall DSP MADI audio interface(s)
+ *   ALSA driver for RME Hammerfall DSP MADI FX audio interface(s)
  *
+ *      Based on hdspm.c
  *      Copyright (c) 2003 Winfried Ritsch (IEM)
  *      code based on hdsp.c   Paul Davis
  *                             Marcus Andersson
  *                             Thomas Charbonnel
- *      Modified 2006-06-01 for AES32 support by Remy Bruno
- *                                               <remy.bruno@trinnov.com>
- *
- *      Modified 2009-04-13 for proper metering by Florian Faber
- *                                               <faber@faberman.de>
- *
- *      Modified 2009-04-14 for native float support by Florian Faber
- *                                               <faber@faberman.de>
- *
- *      Modified 2009-04-26 fixed bug in rms metering by Florian Faber
- *                                               <faber@faberman.de>
- *
- *      Modified 2009-04-30 added hw serial number support by Florian Faber
- *
- *      Modified 2011-01-14 added S/PDIF input on RayDATs by Adrian Knoth
- *
- *	Modified 2011-01-25 variable period sizes on RayDAT/AIO by Adrian Knoth
+ *                             Florian Faber
+ *                             Adrian Knoth
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -75,11 +61,6 @@ MODULE_PARM_DESC(enable, "Enable/disable specific HDSPM soundcards.");
 
 MODULE_AUTHOR
 (
-	"Winfried Ritsch <ritsch_AT_iem.at>, "
-	"Paul Davis <paul@linuxaudiosystems.com>, "
-	"Marcus Andersson, Thomas Charbonnel <thomas@undata.org>, "
-	"Remy Bruno <remy.bruno@trinnov.com>, "
-	"Florian Faber <faberman@linuxproaudio.org>, "
 	"Adrian Knoth <adi@drcomp.erfurt.thur.de>"
 );
 MODULE_DESCRIPTION("RME MADIFX");
@@ -167,25 +148,6 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define HDSPM_TCO2_set_input_MSB		0x40000000
 #define HDSPM_TCO2_set_freq_from_app		0x80000000
 
-
-#define HDSPM_midiDataOut0    352
-#define HDSPM_midiDataOut1    356
-#define HDSPM_midiDataOut2    368
-
-#define HDSPM_midiDataIn0     360
-#define HDSPM_midiDataIn1     364
-#define HDSPM_midiDataIn2     372
-#define HDSPM_midiDataIn3     376
-
-/* status is data bytes in MIDI-FIFO (0-128) */
-#define HDSPM_midiStatusOut0  384
-#define HDSPM_midiStatusOut1  388
-#define HDSPM_midiStatusOut2  400
-
-#define HDSPM_midiStatusIn0   392
-#define HDSPM_midiStatusIn1   396
-#define HDSPM_midiStatusIn2   404
-#define HDSPM_midiStatusIn3   408
 
 #define MADIFX_RD_STATUS		(0*4)
 #define MADIFX_RD_INP_STATUS	(1*4)
@@ -477,12 +439,6 @@ enum {
 #define HDSPM_s2_AEBO_D          0x00000080
 #define HDSPM_s2_AEBI_D          0x00000100
 
-
-#define HDSPM_midi0IRQPending    0x40000000
-#define HDSPM_midi1IRQPending    0x80000000
-#define HDSPM_midi2IRQPending    0x20000000
-#define HDSPM_midi2IRQPendingAES 0x00000020
-#define HDSPM_midi3IRQPending    0x00200000
 
 /* --- status bit helpers */
 #define HDSPM_madiFreqMask  (HDSPM_madiFreq0|HDSPM_madiFreq1|\
@@ -4635,6 +4591,7 @@ static int snd_madifx_create_controls(struct snd_card *card,
    /proc interface
  ------------------------------------------------------------*/
 
+#if 0
 static void
 snd_madifx_proc_read_madi(struct snd_info_entry * entry,
 			 struct snd_info_buffer *buffer)
@@ -4678,8 +4635,8 @@ snd_madifx_proc_read_madi(struct snd_info_entry * entry,
 	snd_iprintf(buffer,
 		"IRQ Pending: Audio=%d, MIDI0=%d, MIDI1=%d, IRQcount=%d\n",
 		status & HDSPM_audioIRQPending,
-		(status & HDSPM_midi0IRQPending) ? 1 : 0,
-		(status & HDSPM_midi1IRQPending) ? 1 : 0,
+		(status & MADIFX_mIRQ0) ? 1 : 0,
+		(status & MADIFX_mIRQ1) ? 1 : 0,
 		hdspm->irq_count);
 	snd_iprintf(buffer,
 		"HW pointer: id = %d, rawptr = %d (%d->%d) "
@@ -4907,148 +4864,8 @@ snd_madifx_proc_read_madi(struct snd_info_entry * entry,
 
 	snd_iprintf(buffer, "\n");
 }
+#endif
 
-static void
-snd_madifx_proc_read_aes32(struct snd_info_entry * entry,
-			  struct snd_info_buffer *buffer)
-{
-	struct hdspm *hdspm = entry->private_data;
-	unsigned int status;
-	unsigned int status2;
-	unsigned int timecode;
-	int pref_syncref;
-	char *autosync_ref;
-	int x;
-
-	status = madifx_read(hdspm, HDSPM_statusRegister);
-	status2 = madifx_read(hdspm, HDSPM_statusRegister2);
-	timecode = madifx_read(hdspm, HDSPM_timecodeRegister);
-
-	snd_iprintf(buffer, "%s (Card #%d) Rev.%x\n",
-		    hdspm->card_name, hdspm->card->number + 1,
-		    hdspm->firmware_rev);
-
-	snd_iprintf(buffer, "IRQ: %d Registers bus: 0x%lx VM: 0x%lx\n",
-		    hdspm->irq, hdspm->port, (unsigned long)hdspm->iobase);
-
-	snd_iprintf(buffer, "--- System ---\n");
-
-	snd_iprintf(buffer,
-		    "IRQ Pending: Audio=%d, MIDI0=%d, MIDI1=%d, IRQcount=%d\n",
-		    status & HDSPM_audioIRQPending,
-		    (status & HDSPM_midi0IRQPending) ? 1 : 0,
-		    (status & HDSPM_midi1IRQPending) ? 1 : 0,
-		    hdspm->irq_count);
-	snd_iprintf(buffer,
-		    "HW pointer: id = %d, rawptr = %d (%d->%d) "
-		    "estimated= %ld (bytes)\n",
-		    ((status & HDSPM_BufferID) ? 1 : 0),
-		    (status & HDSPM_BufferPositionMask),
-		    (status & HDSPM_BufferPositionMask) %
-		    (2 * (int)hdspm->period_bytes),
-		    ((status & HDSPM_BufferPositionMask) - 64) %
-		    (2 * (int)hdspm->period_bytes),
-		    (long) madifx_hw_pointer(hdspm) * 4);
-
-	snd_iprintf(buffer,
-		    "MIDI FIFO: Out1=0x%x, Out2=0x%x, In1=0x%x, In2=0x%x \n",
-		    madifx_read(hdspm, HDSPM_midiStatusOut0) & 0xFF,
-		    madifx_read(hdspm, HDSPM_midiStatusOut1) & 0xFF,
-		    madifx_read(hdspm, HDSPM_midiStatusIn0) & 0xFF,
-		    madifx_read(hdspm, HDSPM_midiStatusIn1) & 0xFF);
-	snd_iprintf(buffer,
-		    "MIDIoverMADI FIFO: In=0x%x, Out=0x%x \n",
-		    madifx_read(hdspm, HDSPM_midiStatusIn2) & 0xFF,
-		    madifx_read(hdspm, HDSPM_midiStatusOut2) & 0xFF);
-	snd_iprintf(buffer,
-		    "Register: ctrl1=0x%x, ctrl2=0x%x, status1=0x%x, "
-		    "status2=0x%x\n",
-		    hdspm->control_register, hdspm->control2_register,
-		    status, status2);
-
-	snd_iprintf(buffer, "--- Settings ---\n");
-
-	x = madifx_get_latency(hdspm);
-
-	snd_iprintf(buffer,
-		    "Size (Latency): %d samples (2 periods of %lu bytes)\n",
-		    x, (unsigned long) hdspm->period_bytes);
-
-	snd_iprintf(buffer, "Line out: %s\n",
-		    (hdspm->
-		     control_register & HDSPM_LineOut) ? "on " : "off");
-
-	snd_iprintf(buffer,
-		    "ClearTrackMarker %s, Emphasis %s, Dolby %s\n",
-		    (hdspm->
-		     control_register & HDSPM_clr_tms) ? "on" : "off",
-		    (hdspm->
-		     control_register & HDSPM_Emphasis) ? "on" : "off",
-		    (hdspm->
-		     control_register & HDSPM_Dolby) ? "on" : "off");
-
-
-	pref_syncref = madifx_pref_sync_ref(hdspm);
-	if (pref_syncref == 0)
-		snd_iprintf(buffer, "Preferred Sync Reference: Word Clock\n");
-	else
-		snd_iprintf(buffer, "Preferred Sync Reference: AES%d\n",
-				pref_syncref);
-
-	snd_iprintf(buffer, "System Clock Frequency: %d\n",
-		    hdspm->system_sample_rate);
-
-	snd_iprintf(buffer, "Double speed: %s\n",
-			hdspm->control_register & HDSPM_DS_DoubleWire?
-			"Double wire" : "Single wire");
-	snd_iprintf(buffer, "Quad speed: %s\n",
-			hdspm->control_register & HDSPM_QS_DoubleWire?
-			"Double wire" :
-			hdspm->control_register & HDSPM_QS_QuadWire?
-			"Quad wire" : "Single wire");
-
-	snd_iprintf(buffer, "--- Status:\n");
-
-	snd_iprintf(buffer, "Word: %s  Frequency: %d\n",
-		    (status & HDSPM_AES32_wcLock) ? "Sync   " : "No Lock",
-		    HDSPM_bit2freq((status >> HDSPM_AES32_wcFreq_bit) & 0xF));
-
-	for (x = 0; x < 8; x++) {
-		snd_iprintf(buffer, "AES%d: %s  Frequency: %d\n",
-			    x+1,
-			    (status2 & (HDSPM_LockAES >> x)) ?
-			    "Sync   " : "No Lock",
-			    HDSPM_bit2freq((timecode >> (4*x)) & 0xF));
-	}
-
-	switch (madifx_autosync_ref(hdspm)) {
-	case HDSPM_AES32_AUTOSYNC_FROM_NONE:
-		autosync_ref = "None"; break;
-	case HDSPM_AES32_AUTOSYNC_FROM_WORD:
-		autosync_ref = "Word Clock"; break;
-	case HDSPM_AES32_AUTOSYNC_FROM_AES1:
-		autosync_ref = "AES1"; break;
-	case HDSPM_AES32_AUTOSYNC_FROM_AES2:
-		autosync_ref = "AES2"; break;
-	case HDSPM_AES32_AUTOSYNC_FROM_AES3:
-		autosync_ref = "AES3"; break;
-	case HDSPM_AES32_AUTOSYNC_FROM_AES4:
-		autosync_ref = "AES4"; break;
-	case HDSPM_AES32_AUTOSYNC_FROM_AES5:
-		autosync_ref = "AES5"; break;
-	case HDSPM_AES32_AUTOSYNC_FROM_AES6:
-		autosync_ref = "AES6"; break;
-	case HDSPM_AES32_AUTOSYNC_FROM_AES7:
-		autosync_ref = "AES7"; break;
-	case HDSPM_AES32_AUTOSYNC_FROM_AES8:
-		autosync_ref = "AES8"; break;
-	default:
-		autosync_ref = "---"; break;
-	}
-	snd_iprintf(buffer, "AutoSync ref = %s\n", autosync_ref);
-
-	snd_iprintf(buffer, "\n");
-}
 
 static void
 snd_madifx_proc_read_raydat(struct snd_info_entry *entry,
@@ -5161,18 +4978,6 @@ static void __devinit snd_madifx_proc_init(struct hdspm *hdspm)
 
 	if (!snd_card_proc_new(hdspm->card, "madifx", &entry)) {
 		switch (hdspm->io_type) {
-		case AES32:
-			snd_info_set_text_ops(entry, hdspm,
-					snd_madifx_proc_read_aes32);
-			break;
-		case MADI:
-			snd_info_set_text_ops(entry, hdspm,
-					snd_madifx_proc_read_madi);
-			break;
-		case MADIface:
-			/* snd_info_set_text_ops(entry, hdspm,
-			 snd_madifx_proc_read_madiface); */
-			break;
 		case RayDAT:
 			snd_info_set_text_ops(entry, hdspm,
 					snd_madifx_proc_read_raydat);
@@ -5546,11 +5351,6 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 					hdspm->dmaPageTable[i]);
 		}
 
-#if 0
-		madifx_set_sgbuf(hdspm, substream, HDSPM_pageAddressBufferIn,
-				params_channels(params));
-#endif
-
 		for (i = 0; i < 32; ++i)
 			snd_madifx_enable_in(hdspm, i, 1);
 
@@ -5559,21 +5359,6 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 		snd_printdd("Allocated sample buffer for capture at %p\n",
 				hdspm->capture_buffer);
 	}
-
-	/*
-	   snd_printdd("Allocated sample buffer for %s at 0x%08X\n",
-	   substream->stream == SNDRV_PCM_STREAM_PLAYBACK ?
-	   "playback" : "capture",
-	   snd_pcm_sgbuf_get_addr(substream, 0));
-	   */
-	/*
-	   snd_printdd("set_hwparams: %s %d Hz, %d channels, bs = %d\n",
-	   substream->stream == SNDRV_PCM_STREAM_PLAYBACK ?
-	   "playback" : "capture",
-	   params_rate(params), params_channels(params),
-	   params_buffer_size(params));
-	   */
-
 
 	/* Switch to native float format if requested */
 	if (SNDRV_PCM_FORMAT_FLOAT_LE == params_format(params)) {
@@ -6727,42 +6512,6 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 	hdspm->port_names_out = NULL;
 
 	switch (hdspm->io_type) {
-	case AES32:
-		hdspm->ss_in_channels = hdspm->ss_out_channels = AES32_CHANNELS;
-		hdspm->ds_in_channels = hdspm->ds_out_channels = AES32_CHANNELS;
-		hdspm->qs_in_channels = hdspm->qs_out_channels = AES32_CHANNELS;
-
-		hdspm->port_names_in_ss = hdspm->port_names_out_ss =
-			texts_ports_aes32;
-		hdspm->port_names_in_ds = hdspm->port_names_out_ds =
-			texts_ports_aes32;
-		hdspm->port_names_in_qs = hdspm->port_names_out_qs =
-			texts_ports_aes32;
-
-		hdspm->max_channels_out = hdspm->max_channels_in =
-			AES32_CHANNELS;
-		hdspm->port_names_in = hdspm->port_names_out =
-			texts_ports_aes32;
-
-		break;
-
-	case MADI:
-	case MADIface:
-		hdspm->ss_in_channels = hdspm->ss_out_channels =
-			MADI_SS_CHANNELS;
-		hdspm->ds_in_channels = hdspm->ds_out_channels =
-			MADI_DS_CHANNELS;
-		hdspm->qs_in_channels = hdspm->qs_out_channels =
-			MADI_QS_CHANNELS;
-
-		hdspm->port_names_in_ss = hdspm->port_names_out_ss =
-			texts_ports_madi;
-		hdspm->port_names_in_ds = hdspm->port_names_out_ds =
-			texts_ports_madi;
-		hdspm->port_names_in_qs = hdspm->port_names_out_qs =
-			texts_ports_madi;
-		break;
-
 	case MADIFX:
 		hdspm->ss_in_channels = MADIFX_SS_IN_CHANNELS;
 		hdspm->ds_in_channels = MADIFX_DS_IN_CHANNELS;
@@ -6771,27 +6520,6 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 		hdspm->ds_out_channels = MADIFX_DS_OUT_CHANNELS;
 		hdspm->qs_out_channels = MADIFX_QS_OUT_CHANNELS;
 		/* FIXME: portnames and stuff missing */
-		break;
-
-	case AIO:
-		if (0 == (madifx_read(hdspm, HDSPM_statusRegister2) & HDSPM_s2_AEBI_D)) {
-			snd_printk(KERN_INFO "HDSPM: AEB input board found, but not supported\n");
-		}
-
-		hdspm->ss_in_channels = AIO_IN_SS_CHANNELS;
-		hdspm->ds_in_channels = AIO_IN_DS_CHANNELS;
-		hdspm->qs_in_channels = AIO_IN_QS_CHANNELS;
-		hdspm->ss_out_channels = AIO_OUT_SS_CHANNELS;
-		hdspm->ds_out_channels = AIO_OUT_DS_CHANNELS;
-		hdspm->qs_out_channels = AIO_OUT_QS_CHANNELS;
-
-		hdspm->port_names_in_ss = texts_ports_aio_in_ss;
-		hdspm->port_names_out_ss = texts_ports_aio_out_ss;
-		hdspm->port_names_in_ds = texts_ports_aio_in_ds;
-		hdspm->port_names_out_ds = texts_ports_aio_out_ds;
-		hdspm->port_names_in_qs = texts_ports_aio_in_qs;
-		hdspm->port_names_out_qs = texts_ports_aio_out_qs;
-
 		break;
 
 	case RayDAT:
@@ -6856,17 +6584,7 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 
 	/* texts */
 	switch (hdspm->io_type) {
-	case AES32:
-		if (hdspm->tco) {
-			hdspm->texts_autosync = texts_autosync_aes_tco;
-			hdspm->texts_autosync_items = 10;
-		} else {
-			hdspm->texts_autosync = texts_autosync_aes;
-			hdspm->texts_autosync_items = 9;
-		}
-		break;
-
-	case MADI:
+        /* Keep the switch if MFXT will be different */
 	case MADIFX:
 		if (hdspm->tco) {
 			hdspm->texts_autosync = texts_autosync_madi_tco;
@@ -6878,31 +6596,6 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 			hdspm->texts_clocksource_items = 6;
 		}
 		break;
-
-	case MADIface:
-
-		break;
-
-	case RayDAT:
-		if (hdspm->tco) {
-			hdspm->texts_autosync = texts_autosync_raydat_tco;
-			hdspm->texts_autosync_items = 9;
-		} else {
-			hdspm->texts_autosync = texts_autosync_raydat;
-			hdspm->texts_autosync_items = 8;
-		}
-		break;
-
-	case AIO:
-		if (hdspm->tco) {
-			hdspm->texts_autosync = texts_autosync_aio_tco;
-			hdspm->texts_autosync_items = 6;
-		} else {
-			hdspm->texts_autosync = texts_autosync_aio;
-			hdspm->texts_autosync_items = 5;
-		}
-		break;
-
 	}
 
 	tasklet_init(&hdspm->midi_tasklet,
