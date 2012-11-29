@@ -72,6 +72,10 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 
 #define MADIFX_FREQ_REG		(1*4)
 #define MADIFX_SETTINGS_REG	(2*4)
+#define MADIFX_midi_out0_data   (8*4)
+#define MADIFX_midi_out1_data   (9*4)
+#define MADIFX_midi_out2_data	(10*4)
+#define MADIFX_midi_out3_data	(11*4)
 #define MADIFX_MIXER_LIST_VOL	(16384*4)
 #define MADIFX_MIXER_LIST_CH	(20480*4)
 #define MADIFX_WR_OUTPUT_GAIN	((24576+256)*4)
@@ -1786,103 +1790,71 @@ static int __devinit snd_madifx_create_midi (struct snd_card *card,
 	hdspm->midi[id].hdspm = hdspm;
 	spin_lock_init (&hdspm->midi[id].lock);
 
-	if (0 == id) {
-		if (MADIface == hdspm->io_type) {
-			/* MIDI-over-MADI on HDSPe MADIface */
-			hdspm->midi[0].dataIn = HDSPM_midiDataIn2;
-			hdspm->midi[0].statusIn = HDSPM_midiStatusIn2;
-			hdspm->midi[0].dataOut = HDSPM_midiDataOut2;
-			hdspm->midi[0].statusOut = HDSPM_midiStatusOut2;
-			hdspm->midi[0].ie = MADIFX_IEN2;
-			hdspm->midi[0].irq = HDSPM_midi2IRQPending;
-		} else {
-			hdspm->midi[0].dataIn = HDSPM_midiDataIn0;
-			hdspm->midi[0].statusIn = HDSPM_midiStatusIn0;
-			hdspm->midi[0].dataOut = HDSPM_midiDataOut0;
-			hdspm->midi[0].statusOut = HDSPM_midiStatusOut0;
-			hdspm->midi[0].ie = MADIFX_IEN0;
-			hdspm->midi[0].irq = HDSPM_midi0IRQPending;
-		}
-	} else if (1 == id) {
-		hdspm->midi[1].dataIn = HDSPM_midiDataIn1;
-		hdspm->midi[1].statusIn = HDSPM_midiStatusIn1;
-		hdspm->midi[1].dataOut = HDSPM_midiDataOut1;
-		hdspm->midi[1].statusOut = HDSPM_midiStatusOut1;
+	switch (id) {
+	case 0:
+		hdspm->midi[0].dataIn = MADIFX_midi_in0_data;
+		hdspm->midi[0].statusIn = MADIFX_midi_in0_status;
+		hdspm->midi[0].dataOut = MADIFX_midi_out0_data;
+		hdspm->midi[0].statusOut = MADIFX_midi_out0_status;
+		hdspm->midi[0].ie = MADIFX_IEN0;
+		hdspm->midi[0].irq = MADIFX_mIRQ0;
+		break;
+
+	case 1:
+		hdspm->midi[1].dataIn = MADIFX_midi_in1_data;
+		hdspm->midi[1].statusIn = MADIFX_midi_in1_status;
+		hdspm->midi[1].dataOut = MADIFX_midi_out1_data;
+		hdspm->midi[1].statusOut = MADIFX_midi_out1_status;
 		hdspm->midi[1].ie = MADIFX_IEN1;
-		hdspm->midi[1].irq = HDSPM_midi1IRQPending;
-	} else if ((2 == id) && (MADI == hdspm->io_type)) {
-		/* MIDI-over-MADI on HDSPe MADI */
-		hdspm->midi[2].dataIn = HDSPM_midiDataIn2;
-		hdspm->midi[2].statusIn = HDSPM_midiStatusIn2;
-		hdspm->midi[2].dataOut = HDSPM_midiDataOut2;
-		hdspm->midi[2].statusOut = HDSPM_midiStatusOut2;
+		hdspm->midi[1].irq = MADIFX_mIRQ1;
+		break;
+
+	case 2:
+		hdspm->midi[2].dataIn = MADIFX_midi_in2_data;
+		hdspm->midi[2].statusIn = MADIFX_midi_in2_status;
+		hdspm->midi[2].dataOut = MADIFX_midi_out2_data;
+		hdspm->midi[2].statusOut = MADIFX_midi_out2_status;
 		hdspm->midi[2].ie = MADIFX_IEN2;
-		hdspm->midi[2].irq = HDSPM_midi2IRQPending;
-	} else if (2 == id) {
-		/* TCO MTC, read only */
-		hdspm->midi[2].dataIn = HDSPM_midiDataIn2;
-		hdspm->midi[2].statusIn = HDSPM_midiStatusIn2;
-		hdspm->midi[2].dataOut = -1;
-		hdspm->midi[2].statusOut = -1;
-		hdspm->midi[2].ie = MADIFX_IEN2;
-		hdspm->midi[2].irq = HDSPM_midi2IRQPendingAES;
-	} else if (3 == id) {
-		/* TCO MTC on HDSPe MADI */
-		hdspm->midi[3].dataIn = HDSPM_midiDataIn3;
-		hdspm->midi[3].statusIn = HDSPM_midiStatusIn3;
-		hdspm->midi[3].dataOut = -1;
-		hdspm->midi[3].statusOut = -1;
+		hdspm->midi[2].irq = MADIFX_mIRQ2;
+		break;
+
+	case 3:
+		hdspm->midi[3].dataIn = MADIFX_midi_in3_data;
+		hdspm->midi[3].statusIn = MADIFX_midi_in3_status;
+		hdspm->midi[3].dataOut = MADIFX_midi_out3_data;
+		hdspm->midi[3].statusOut = MADIFX_midi_out3_status;
 		hdspm->midi[3].ie = MADIFX_IEN3;
-		hdspm->midi[3].irq = HDSPM_midi3IRQPending;
+		hdspm->midi[3].irq = MADIFX_mIRQ3;
+		break;
+
+	default:
+		snd_printk(KERN_ERR "MADIFX: Unknown MIDI port %i\n", id);
+		return -EINVAL;
+
 	}
 
-	if ((id < 2) || ((2 == id) && ((MADI == hdspm->io_type) ||
-					(MADIface == hdspm->io_type)))) {
-		if ((id == 0) && (MADIface == hdspm->io_type)) {
-			sprintf(buf, "%s MIDIoverMADI", card->shortname);
-		} else if ((id == 2) && (MADI == hdspm->io_type)) {
-			sprintf(buf, "%s MIDIoverMADI", card->shortname);
-		} else {
-			sprintf(buf, "%s MIDI %d", card->shortname, id+1);
-		}
-		err = snd_rawmidi_new(card, buf, id, 1, 1,
-				&hdspm->midi[id].rmidi);
-		if (err < 0)
-			return err;
+	sprintf(buf, "%s MIDIoverMADI %d", card->shortname, id+1);
 
-		sprintf(hdspm->midi[id].rmidi->name, "%s MIDI %d",
-				card->id, id+1);
-		hdspm->midi[id].rmidi->private_data = &hdspm->midi[id];
+	err = snd_rawmidi_new(card, buf, id, 1, 1,
+			&hdspm->midi[id].rmidi);
+	if (err < 0)
+		return err;
 
-		snd_rawmidi_set_ops(hdspm->midi[id].rmidi,
-				SNDRV_RAWMIDI_STREAM_OUTPUT,
-				&snd_madifx_midi_output);
-		snd_rawmidi_set_ops(hdspm->midi[id].rmidi,
-				SNDRV_RAWMIDI_STREAM_INPUT,
-				&snd_madifx_midi_input);
+	sprintf(hdspm->midi[id].rmidi->name, "%s MIDI %d",
+			card->id, id+1);
+	hdspm->midi[id].rmidi->private_data = &hdspm->midi[id];
 
-		hdspm->midi[id].rmidi->info_flags |=
-			SNDRV_RAWMIDI_INFO_OUTPUT |
-			SNDRV_RAWMIDI_INFO_INPUT |
-			SNDRV_RAWMIDI_INFO_DUPLEX;
-	} else {
-		/* TCO MTC, read only */
-		sprintf(buf, "%s MTC %d", card->shortname, id+1);
-		err = snd_rawmidi_new(card, buf, id, 1, 1,
-				&hdspm->midi[id].rmidi);
-		if (err < 0)
-			return err;
+	snd_rawmidi_set_ops(hdspm->midi[id].rmidi,
+			SNDRV_RAWMIDI_STREAM_OUTPUT,
+			&snd_madifx_midi_output);
+	snd_rawmidi_set_ops(hdspm->midi[id].rmidi,
+			SNDRV_RAWMIDI_STREAM_INPUT,
+			&snd_madifx_midi_input);
 
-		sprintf(hdspm->midi[id].rmidi->name,
-				"%s MTC %d", card->id, id+1);
-		hdspm->midi[id].rmidi->private_data = &hdspm->midi[id];
-
-		snd_rawmidi_set_ops(hdspm->midi[id].rmidi,
-				SNDRV_RAWMIDI_STREAM_INPUT,
-				&snd_madifx_midi_input);
-
-		hdspm->midi[id].rmidi->info_flags |= SNDRV_RAWMIDI_INFO_INPUT;
-	}
+	hdspm->midi[id].rmidi->info_flags |=
+		SNDRV_RAWMIDI_INFO_OUTPUT |
+		SNDRV_RAWMIDI_INFO_INPUT |
+		SNDRV_RAWMIDI_INFO_DUPLEX;
 
 	return 0;
 }
@@ -6405,7 +6377,7 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 	case HDSPM_MADIFX_REV:
 		hdspm->io_type = MADIFX;
 		hdspm->card_name = "RME MADI FX";
-		hdspm->midiPorts = 0;  /* FIXME: MIDI handling broken atm */
+		hdspm->midiPorts = 4;
 		break;
 	default:
 		snd_printk(KERN_ERR
