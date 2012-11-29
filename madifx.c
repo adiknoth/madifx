@@ -4421,6 +4421,7 @@ static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 #else
 static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 	HDSPM_SYSTEM_SAMPLE_RATE("System Sample Rate", 0),
+	HDSPM_INTERNAL_CLOCK("Internal Clock", 0),
 	MADIFX_CLOCK_SELECT("Clock Selection", 0)
 };
 #endif
