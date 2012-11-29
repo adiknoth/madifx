@@ -1400,7 +1400,7 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 	   changes in the read/write routines.
 	 */
 
-	if (current_rate <= 48000)
+	if (current_rate <= 56000)
 		current_speed = HDSPM_SPEED_SINGLE;
 	else if (current_rate <= 96000)
 		current_speed = HDSPM_SPEED_DOUBLE;
@@ -1409,7 +1409,7 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 
 	if (rate <= 48000)
 		target_speed = HDSPM_SPEED_SINGLE;
-	else if (rate <= 96000)
+	else if (rate <= 112000)
 		target_speed = HDSPM_SPEED_DOUBLE;
 	else
 		target_speed = HDSPM_SPEED_QUAD;
@@ -1476,13 +1476,13 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 
 	hdspm->system_sample_rate = rate;
 
-	if (rate <= 48000) {
+	if (rate <= 56000) {
 		hdspm->max_channels_in = hdspm->ss_in_channels;
 		hdspm->max_channels_out = hdspm->ss_out_channels;
 		hdspm->port_names_in = hdspm->port_names_in_ss;
 		hdspm->port_names_out = hdspm->port_names_out_ss;
 		hdspm->speedmode = ss;
-	} else if (rate <= 96000) {
+	} else if (rate <= 112000) {
 		hdspm->max_channels_in = hdspm->ds_in_channels;
 		hdspm->max_channels_out = hdspm->ds_out_channels;
 		hdspm->port_names_in = hdspm->port_names_in_ds;
