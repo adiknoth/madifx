@@ -5382,6 +5382,8 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 	struct hdspm *hdspm = snd_pcm_substream_chip(substream);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+        int last_madi_channel = 193;
+
 		if (snd_BUG_ON(info->channel >= hdspm->max_channels_out)) {
 			snd_printk(KERN_INFO "snd_madifx_channel_info: output channel out of range (%d)\n", info->channel);
 			return -EINVAL;
@@ -5417,18 +5419,24 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 			   Outputstream 24 with 8 channels at byte offset 6160384
 			   Outputstream 25 with 2 channels at byte offset 65536     Phones
 			   */
-			info->offset = (info->channel < 2) ?
-				0 : ((info->channel > 193) ? 65536 :
-						131072 + 8 * 4 * 8192 * ((info->channel-2)/8));
-			info->first = (info->channel < 2 || info->channel > 193) ?
-				32 * info->channel : 32 * ((info->channel-2) % 8);
-			info->step = (info->channel < 2 || info->channel > 193) ? 64 : 256;
+
+            /* Note: channels start at zero */
+            last_madi_channel = 193;
 			break;
 		case ds:
+            last_madi_channel = 97;
+			break;
 		case qs:
-			/* FIXME: No idea if really needed */
+            last_madi_channel = 49;
 			break;
 		}
+        info->offset = (info->channel < 2) ?
+            0 : ((info->channel > last_madi_channel) ? 65536 :
+                    131072 + 8 * 4 * 8192 * ((info->channel-2)/8));
+        info->first = (info->channel < 2 || info->channel > last_madi_channel) ?
+            32 * info->channel : 32 * ((info->channel-2) % 8);
+        info->step = (info->channel < 2 || info->channel > last_madi_channel) ?
+            64 : 256;
 	} else {
 		if (snd_BUG_ON(info->channel >= hdspm->max_channels_in)) {
 			snd_printk(KERN_INFO "snd_madifx_channel_info: input channel out of range (%d)\n", info->channel);
@@ -5464,15 +5472,13 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 			   Inputstream 24 with 8 channels at byte offset 6094848
 			   */
 		case ss:
+		case ds:
+		case qs:
 			info->offset = (info->channel < 2) ? 0 : 65536 + 8 * 4 * 8192 *
 				((info->channel-2)/8);
 			info->first = (info->channel < 2) ? 32 * info->channel :
 				32 * ((info->channel-2) % 8);
 			info->step = (info->channel < 2) ? 64 : 256;
-			break;
-		case ds:
-		case qs:
-			/* FIXME: No idea if really needed */
 			break;
 		}
 	}
