@@ -5579,7 +5579,7 @@ static struct snd_pcm_hardware snd_madifx_playback_subinfo = {
 		 SNDRV_PCM_INFO_MMAP_VALID |
 		 SNDRV_PCM_INFO_COMPLEX |
 		 SNDRV_PCM_INFO_SYNC_START | SNDRV_PCM_INFO_DOUBLE),
-	.formats = SNDRV_PCM_FMTBIT_S32_LE,
+	.formats = SNDRV_PCM_FMTBIT_S32_LE | SNDRV_PCM_FMTBIT_FLOAT_LE,
 	.rates = (SNDRV_PCM_RATE_32000 |
 		  SNDRV_PCM_RATE_44100 |
 		  SNDRV_PCM_RATE_48000 |
@@ -5603,7 +5603,7 @@ static struct snd_pcm_hardware snd_madifx_capture_subinfo = {
 		 SNDRV_PCM_INFO_MMAP_VALID |
 		 SNDRV_PCM_INFO_COMPLEX |
 		 SNDRV_PCM_INFO_SYNC_START),
-	.formats = SNDRV_PCM_FMTBIT_S32_LE,
+	.formats = SNDRV_PCM_FMTBIT_S32_LE | SNDRV_PCM_FMTBIT_FLOAT_LE,
 	.rates = (SNDRV_PCM_RATE_32000 |
 		  SNDRV_PCM_RATE_44100 |
 		  SNDRV_PCM_RATE_48000 |
