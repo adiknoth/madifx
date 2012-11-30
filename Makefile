@@ -21,7 +21,6 @@ install-only:: default
 	cp madifx.ko $(MODDIR)
 
 install:: install-only
-	/sbin/depmod -a
 	/sbin/rmmod madifx || true
 	/sbin/rmmod snd-madifx || true
 	/sbin/modprobe madifx

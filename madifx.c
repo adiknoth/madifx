@@ -255,6 +255,29 @@ enum {
 
 #define MADIFX_SyncRefMask	(MADIFX_SyncRef0 | MADIFX_SyncRef1 | MADIFX_SyncRef2)
 
+/* input freq register bits */
+
+#define MADIFX_madi1_freq0	0x00001
+#define MADIFX_madi1_freq1	0x00002
+#define MADIFX_madi1_freq2	0x00004
+#define MADIFX_madi1_freq3	0x00008
+#define MADIFX_madi2_freq0	0x00010
+#define MADIFX_madi2_freq1	0x00020
+#define MADIFX_madi2_freq2	0x00040
+#define MADIFX_madi2_freq3	0x00080
+#define MADIFX_madi3_freq0	0x00100
+#define MADIFX_madi3_freq1	0x00200
+#define MADIFX_madi3_freq2	0x00400
+#define MADIFX_madi3_freq3	0x00800
+#define MADIFX_aes_freq0	0x01000
+#define MADIFX_aes_freq1	0x02000
+#define MADIFX_aes_freq2	0x04000
+#define MADIFX_aes_freq3	0x08000
+#define MADIFX_word_freq0	0x10000
+#define MADIFX_word_freq1	0x20000
+#define MADIFX_word_freq2	0x40000
+#define MADIFX_word_freq3	0x80000
+
 
 /* the meters are regular i/o-mapped registers, but offset
    considerably from the rest. the peak registers are reset
@@ -2030,6 +2053,60 @@ static int madifx_get_s1_sample_rate(struct hdspm *hdspm, unsigned int idx)
 	return (status >> (idx*4)) & 0xF;
 }
 
+static int madifx_external_freq_index(struct hdspm *hdspm, enum madifx_syncsource port)
+{
+	int i = 0;
+	int freq0_bit;
+	int inp_freq;
+	int lock_bit;
+	int inp_status;
+
+	inp_status = madifx_read(hdspm, MADIFX_RD_INP_STATUS);
+	inp_freq = madifx_read(hdspm, MADIFX_RD_INP_FREQ);
+
+	switch (port) {
+	case syncsource_madi1:
+		lock_bit = MADIFX_madi1_lock;
+		freq0_bit = MADIFX_madi1_freq0;
+		break;
+	case syncsource_madi2:
+		lock_bit = MADIFX_madi2_lock;
+		freq0_bit = MADIFX_madi2_freq0;
+		break;
+	case syncsource_madi3:
+		lock_bit = MADIFX_madi3_lock;
+		freq0_bit = MADIFX_madi3_freq0;
+		break;
+	case syncsource_aes:
+		lock_bit = MADIFX_aes_lock;
+		freq0_bit = MADIFX_aes_freq0;
+		break;
+	case syncsource_wc:
+		lock_bit = MADIFX_word_lock;
+		freq0_bit = MADIFX_word_freq0;
+		break;
+	default:
+		snd_printk (KERN_ERR "MADIFX: Unknown external port ID %i\n", port);
+		return 0;
+	}
+
+	if (!(inp_status & lock_bit)) {
+		i = 0;
+	} else {
+		int freq_bits = inp_freq & (freq0_bit*15);
+		if      (freq_bits == freq0_bit * 1) i = 1;
+		else if (freq_bits == freq0_bit * 2) i = 2;
+		else if (freq_bits == freq0_bit * 3) i = 3;
+		else if (freq_bits == freq0_bit * 4) i = 4;
+		else if (freq_bits == freq0_bit * 5) i = 5;
+		else if (freq_bits == freq0_bit * 6) i = 6;
+		else if (freq_bits == freq0_bit * 7) i = 7;
+		else if (freq_bits == freq0_bit * 8) i = 8;
+		else if (freq_bits == freq0_bit * 9) i = 9;
+		else i = 0;
+	}
+	return i;
+}
 
 
 #define HDSPM_AUTOSYNC_SAMPLE_RATE(xname, xindex) \
@@ -2064,83 +2141,9 @@ static int snd_madifx_get_autosync_sample_rate(struct snd_kcontrol *kcontrol,
 	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
 
 	switch (hdspm->io_type) {
-	case RayDAT:
-		switch (kcontrol->private_value) {
-		case 0:
-			ucontrol->value.enumerated.item[0] =
-				madifx_get_wc_sample_rate(hdspm);
-			break;
-		case 7:
-			ucontrol->value.enumerated.item[0] =
-				madifx_get_tco_sample_rate(hdspm);
-			break;
-		case 8:
-			ucontrol->value.enumerated.item[0] =
-				madifx_get_sync_in_sample_rate(hdspm);
-			break;
-		default:
-			ucontrol->value.enumerated.item[0] =
-				madifx_get_s1_sample_rate(hdspm,
-						kcontrol->private_value-1);
-		}
-		break;
-
-	case AIO:
-		switch (kcontrol->private_value) {
-		case 0: /* WC */
-			ucontrol->value.enumerated.item[0] =
-				madifx_get_wc_sample_rate(hdspm);
-			break;
-		case 4: /* TCO */
-			ucontrol->value.enumerated.item[0] =
-				madifx_get_tco_sample_rate(hdspm);
-			break;
-		case 5: /* SYNC_IN */
-			ucontrol->value.enumerated.item[0] =
-				madifx_get_sync_in_sample_rate(hdspm);
-			break;
-		default:
-			ucontrol->value.enumerated.item[0] =
-				madifx_get_s1_sample_rate(hdspm,
-						ucontrol->id.index-1);
-		}
-		break;
-
-	case AES32:
-
-		switch (kcontrol->private_value) {
-		case 0: /* WC */
-			ucontrol->value.enumerated.item[0] =
-				madifx_get_wc_sample_rate(hdspm);
-			break;
-		case 9: /* TCO */
-			ucontrol->value.enumerated.item[0] =
-				madifx_get_tco_sample_rate(hdspm);
-			break;
-		case 10: /* SYNC_IN */
-			ucontrol->value.enumerated.item[0] =
-				madifx_get_sync_in_sample_rate(hdspm);
-			break;
-		default: /* AES1 to AES8 */
-			ucontrol->value.enumerated.item[0] =
-				madifx_get_s1_sample_rate(hdspm,
-						kcontrol->private_value-1);
-			break;
-		}
-		break;
-
-	case MADI:
-	case MADIface:
-		{
-			int rate = madifx_external_sample_rate(hdspm);
-			int i, selected_rate = 0;
-			for (i = 1; i < 10; i++)
-				if (HDSPM_bit2freq(i) == rate) {
-					selected_rate = i;
-					break;
-				}
-			ucontrol->value.enumerated.item[0] = selected_rate;
-		}
+	case MADIFX:
+		ucontrol->value.enumerated.item[0] =
+			madifx_external_freq_index(hdspm, kcontrol->private_value);
 		break;
 
 	default:
@@ -2661,21 +2664,6 @@ static int snd_madifx_put_pref_sync_ref(struct snd_kcontrol *kcontrol,
 	.put = snd_madifx_put_clock_select \
 }
 
-static int snd_madifx_set_clock_select(struct snd_kcontrol *kcontrol,
-				       struct snd_ctl_elem_value *ucontrol)
-{
-#if 0
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-	int psf = madifx_get_clock_source(hdspm);
-
-	if (psf >= 0) {
-		ucontrol->value.enumerated.item[0] = psf;
-		return 0;
-	}
-#endif
-
-	return -1;
-}
 
 static int snd_madifx_info_clock_select(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_info *uinfo)
@@ -4344,6 +4332,11 @@ static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 	HDSPM_SYNC_CHECK("MADI 3 SyncCheck", 2),
 	HDSPM_SYNC_CHECK("WC SyncCheck", 3),
 	HDSPM_SYNC_CHECK("AES SyncCheck", 4),
+	HDSPM_AUTOSYNC_SAMPLE_RATE("MADI 1 Frequency", 0),
+	HDSPM_AUTOSYNC_SAMPLE_RATE("MADI 2 Frequency", 1),
+	HDSPM_AUTOSYNC_SAMPLE_RATE("MADI 3 Frequency", 2),
+	HDSPM_AUTOSYNC_SAMPLE_RATE("WC Frequency", 3),
+	HDSPM_AUTOSYNC_SAMPLE_RATE("AES Frequency", 4),
 	MADIFX_CLOCK_SELECT("Clock Selection", 0)
 };
 #endif

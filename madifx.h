@@ -142,11 +142,12 @@ enum madifx_madi_frame_format {
 };
 
 enum madifx_syncsource {
-	syncsource_wc = 0,
-	syncsource_madi = 1,
-	syncsource_tco = 2,
-	syncsource_sync = 3,
-	syncsource_none = 4
+	syncsource_madi1 = 0,
+	syncsource_madi2 = 1,
+	syncsource_madi3 = 2,
+	syncsource_aes = 3,
+	syncsource_wc = 4,
+	syncsource_none = 5
 };
 
 struct madifx_status {
