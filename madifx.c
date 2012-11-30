@@ -2153,6 +2153,68 @@ static int snd_madifx_get_autosync_sample_rate(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#define MADIFX_MADI_CHANNELCOUNT(xname, xindex) \
+{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
+	.name = xname, \
+	.private_value = xindex, \
+	.access = SNDRV_CTL_ELEM_ACCESS_READ, \
+	.info = snd_madifx_info_channelcount, \
+	.get = snd_madifx_get_channelcount \
+}
+
+
+static int snd_madifx_info_channelcount(struct snd_kcontrol *kcontrol,
+					       struct snd_ctl_elem_info *uinfo)
+{
+	static char *texts[] = { "64", "56", "32", "28", "16", "14", "No lock" };
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
+	uinfo->count = 1;
+	uinfo->value.enumerated.items = 7;
+	if (uinfo->value.enumerated.item >= uinfo->value.enumerated.items)
+		uinfo->value.enumerated.item =
+			uinfo->value.enumerated.items - 1;
+	strcpy(uinfo->value.enumerated.name,
+			texts[uinfo->value.enumerated.item]);
+
+	return 0;
+}
+
+
+static int snd_madifx_get_channelcount(struct snd_kcontrol *kcontrol,
+					      struct snd_ctl_elem_value *
+					      ucontrol)
+{
+	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
+	int rate_index;
+	int idx = kcontrol->private_value;
+	int i = 0;
+	int inp_status;
+	int rx_64ch_bit = (MADIFX_madi1_rx_64ch << idx);
+
+	inp_status = madifx_read(hdspm, MADIFX_RD_INP_STATUS);
+
+
+	/* Check for speed. If rate_index is zero, there's no lock */
+	rate_index = madifx_external_freq_index(hdspm, idx);
+	if (0 == rate_index)
+		i = 6;
+	else {
+		if (inp_status & rx_64ch_bit)
+			i = 0;
+		else
+			i = 1;
+		
+		/* I know this is ugly */
+		if (rate_index > 3) i += 2; /* Double speed */
+		if (rate_index > 6) i += 2; /* Quad speed */
+	}
+
+	ucontrol->value.enumerated.item[0] = i;
+
+	return 0;
+}
+
+
 
 #define HDSPM_SYSTEM_CLOCK_MODE(xname, xindex) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
@@ -4337,6 +4399,9 @@ static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 	HDSPM_AUTOSYNC_SAMPLE_RATE("MADI 3 Frequency", 2),
 	HDSPM_AUTOSYNC_SAMPLE_RATE("WC Frequency", 3),
 	HDSPM_AUTOSYNC_SAMPLE_RATE("AES Frequency", 4),
+	MADIFX_MADI_CHANNELCOUNT("MADI 1 RX #ch", 0),
+	MADIFX_MADI_CHANNELCOUNT("MADI 2 RX #ch", 1),
+	MADIFX_MADI_CHANNELCOUNT("MADI 3 RX #ch", 2),
 	MADIFX_CLOCK_SELECT("Clock Selection", 0)
 };
 #endif
