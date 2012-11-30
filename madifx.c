@@ -2931,60 +2931,59 @@ static int snd_madifx_put_line_out(struct snd_kcontrol *kcontrol,
 }
 
 
-#define HDSPM_TX_64(xname, xindex) \
+#define MADIFX_TOGGLE_SETTING(xname, xindex) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
 	.name = xname, \
-	.index = xindex, \
 	.private_value = xindex, \
-	.info = snd_madifx_info_tx_64, \
-	.get = snd_madifx_get_tx_64, \
-	.put = snd_madifx_put_tx_64 \
+	.info = snd_madifx_info_toggle_setting, \
+	.get = snd_madifx_get_toggle_setting, \
+	.put = snd_madifx_put_toggle_setting \
 }
 
-static int madifx_tx_64(struct hdspm * hdspm, int idx)
+static int madifx_read_toggle_setting(struct hdspm * hdspm, u32 reg)
 {
-	return (hdspm->settings_register & (MADIFX_madi1_tx_64ch << idx)) ? 1 : 0;
+	return (hdspm->settings_register & (reg)) ? 1 : 0;
 }
 
-static int madifx_set_tx_64(struct hdspm * hdspm, int idx, int out)
+static int madifx_set_toggle_setting(struct hdspm * hdspm, u32 reg, int out)
 {
 	if (out)
-		hdspm->settings_register |= (MADIFX_madi1_tx_64ch << idx);
+		hdspm->settings_register |= (reg);
 	else
-		hdspm->settings_register &= ~(MADIFX_madi1_tx_64ch << idx);
+		hdspm->settings_register &= ~(reg);
 	madifx_write(hdspm, MADIFX_SETTINGS_REG, hdspm->settings_register);
 
 	return 0;
 }
 
-#define snd_madifx_info_tx_64		snd_ctl_boolean_mono_info
+#define snd_madifx_info_toggle_setting		snd_ctl_boolean_mono_info
 
-static int snd_madifx_get_tx_64(struct snd_kcontrol *kcontrol,
+static int snd_madifx_get_toggle_setting(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
 	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
 
 	spin_lock_irq(&hdspm->lock);
-	ucontrol->value.integer.value[0] = madifx_tx_64(hdspm,
+	ucontrol->value.integer.value[0] = madifx_read_toggle_setting(hdspm,
 			kcontrol->private_value);
 	spin_unlock_irq(&hdspm->lock);
 	return 0;
 }
 
-static int snd_madifx_put_tx_64(struct snd_kcontrol *kcontrol,
+static int snd_madifx_put_toggle_setting(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
 	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
 	int change;
-	int idx = kcontrol->private_value;
+	u32 reg = kcontrol->private_value;
 	unsigned int val;
 
 	if (!snd_madifx_use_is_exclusive(hdspm))
 		return -EBUSY;
 	val = ucontrol->value.integer.value[0] & 1;
 	spin_lock_irq(&hdspm->lock);
-	change = (int) val != madifx_tx_64(hdspm, idx);
-	madifx_set_tx_64(hdspm, idx, val);
+	change = (int) val != madifx_read_toggle_setting(hdspm, reg);
+	madifx_set_toggle_setting(hdspm, reg, val);
 	spin_unlock_irq(&hdspm->lock);
 	return change;
 }
@@ -4405,9 +4404,17 @@ static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 	MADIFX_MADI_CHANNELCOUNT("MADI 1 RX #ch", 0),
 	MADIFX_MADI_CHANNELCOUNT("MADI 2 RX #ch", 1),
 	MADIFX_MADI_CHANNELCOUNT("MADI 3 RX #ch", 2),
-	HDSPM_TX_64("MADI 1 TX 64 channels mode", 0),
-	HDSPM_TX_64("MADI 2 TX 64 channels mode", 1),
-	HDSPM_TX_64("MADI 3 TX 64 channels mode", 2),
+	MADIFX_TOGGLE_SETTING("MADI 1 TX 64ch mode", MADIFX_madi1_tx_64ch),
+	MADIFX_TOGGLE_SETTING("MADI 2 TX 64ch mode", MADIFX_madi2_tx_64ch),
+	MADIFX_TOGGLE_SETTING("MADI 3 TX 64ch mode", MADIFX_madi3_tx_64ch),
+	MADIFX_TOGGLE_SETTING("MADI 1 SMUX mode", MADIFX_madi1_smux),
+	MADIFX_TOGGLE_SETTING("MADI 2 SMUX mode", MADIFX_madi2_smux),
+	MADIFX_TOGGLE_SETTING("MADI 3 SMUX mode", MADIFX_madi3_smux),
+	MADIFX_TOGGLE_SETTING("WC Term", MADIFX_WCK_TERM),
+	MADIFX_TOGGLE_SETTING("WC single speed", MADIFX_WCK48),
+	MADIFX_TOGGLE_SETTING("AES professional", MADIFX_PRO),
+	MADIFX_TOGGLE_SETTING("Redundancy mode", MADIFX_redundancy_mode),
+	MADIFX_TOGGLE_SETTING("Mirror MADI out", MADIFX_mirror_madi_out),
 	MADIFX_CLOCK_SELECT("Clock Selection", 0)
 };
 #endif
