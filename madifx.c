@@ -3778,27 +3778,14 @@ static int madifx_wc_sync_check(struct hdspm *hdspm)
 }
 
 
-static int madifx_madi_sync_check(struct hdspm *hdspm)
-{
-	int status = madifx_read(hdspm, HDSPM_statusRegister);
-	if (status & HDSPM_madiLock) {
-		if (status & HDSPM_madiSync)
-			return 2;
-		else
-			return 1;
-	}
-	return 0;
-}
-
-
-static int madifx_s1_sync_check(struct hdspm *hdspm, int idx)
+static int madifx_sync_check(struct hdspm *hdspm, int idx)
 {
 	int status, lock, sync;
 
-	status = madifx_read(hdspm, HDSPM_RD_STATUS_1);
+	status = madifx_read(hdspm, MADIFX_RD_INP_STATUS);
 
-	lock = (status & (0x1<<idx)) ? 1 : 0;
-	sync = (status & (0x100<<idx)) ? 1 : 0;
+	lock = (status & (MADIFX_madi1_lock << idx)) ? 1 : 0;
+	sync = (status & (MADIFX_madi1_sync << idx)) ? 1 : 0;
 
 	if (lock && sync)
 		return 2;
@@ -3841,21 +3828,6 @@ static int madifx_sync_in_sync_check(struct hdspm *hdspm)
 	else if (lock)
 		return 1;
 
-	return 0;
-}
-
-static int madifx_aes_sync_check(struct hdspm *hdspm, int idx)
-{
-	int status2, lock, sync;
-	status2 = madifx_read(hdspm, HDSPM_statusRegister2);
-
-	lock = (status2 & (0x0080 >> idx)) ? 1 : 0;
-	sync = (status2 & (0x8000 >> idx)) ? 1 : 0;
-
-	if (sync)
-		return 2;
-	else if (lock)
-		return 1;
 	return 0;
 }
 
@@ -3906,64 +3878,9 @@ static int snd_madifx_get_sync_check(struct snd_kcontrol *kcontrol,
 	int val = -1;
 
 	switch (hdspm->io_type) {
-	case RayDAT:
-		switch (kcontrol->private_value) {
-		case 0: /* WC */
-			val = madifx_wc_sync_check(hdspm); break;
-		case 7: /* TCO */
-			val = madifx_tco_sync_check(hdspm); break;
-		case 8: /* SYNC IN */
-			val = madifx_sync_in_sync_check(hdspm); break;
-		default:
-			val = madifx_s1_sync_check(hdspm,
-					kcontrol->private_value-1);
-		}
+	case MADIFX:
+		val = madifx_sync_check(hdspm, kcontrol->private_value);
 		break;
-
-	case AIO:
-		switch (kcontrol->private_value) {
-		case 0: /* WC */
-			val = madifx_wc_sync_check(hdspm); break;
-		case 4: /* TCO */
-			val = madifx_tco_sync_check(hdspm); break;
-		case 5: /* SYNC IN */
-			val = madifx_sync_in_sync_check(hdspm); break;
-		default:
-			val = madifx_s1_sync_check(hdspm, ucontrol->id.index-1);
-		}
-		break;
-
-	case MADI:
-		switch (kcontrol->private_value) {
-		case 0: /* WC */
-			val = madifx_wc_sync_check(hdspm); break;
-		case 1: /* MADI */
-			val = madifx_madi_sync_check(hdspm); break;
-		case 2: /* TCO */
-			val = madifx_tco_sync_check(hdspm); break;
-		case 3: /* SYNC_IN */
-			val = madifx_sync_in_sync_check(hdspm); break;
-		}
-		break;
-
-	case MADIface:
-		val = madifx_madi_sync_check(hdspm); /* MADI */
-		break;
-
-	case AES32:
-		switch (kcontrol->private_value) {
-		case 0: /* WC */
-			val = madifx_wc_sync_check(hdspm); break;
-		case 9: /* TCO */
-			val = madifx_tco_sync_check(hdspm); break;
-		case 10 /* SYNC IN */:
-			val = madifx_sync_in_sync_check(hdspm); break;
-		default: /* AES1 to AES8 */
-			 val = madifx_aes_sync_check(hdspm,
-					 kcontrol->private_value-1);
-		}
-		break;
-
 	}
 
 	if (-1 == val)
@@ -4422,6 +4339,11 @@ static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 	HDSPM_SYSTEM_SAMPLE_RATE("System Sample Rate", 0),
 	HDSPM_INTERNAL_CLOCK("Internal Clock", 0),
+	HDSPM_SYNC_CHECK("MADI 1 SyncCheck", 0),
+	HDSPM_SYNC_CHECK("MADI 2 SyncCheck", 1),
+	HDSPM_SYNC_CHECK("MADI 3 SyncCheck", 2),
+	HDSPM_SYNC_CHECK("WC SyncCheck", 3),
+	HDSPM_SYNC_CHECK("AES SyncCheck", 4),
 	MADIFX_CLOCK_SELECT("Clock Selection", 0)
 };
 #endif
@@ -6106,8 +6028,6 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 		case MADIface:
 			status.card_specific.madi.sync_wc =
 				madifx_wc_sync_check(hdspm);
-			status.card_specific.madi.sync_madi =
-				madifx_madi_sync_check(hdspm);
 			status.card_specific.madi.sync_tco =
 				madifx_tco_sync_check(hdspm);
 			status.card_specific.madi.sync_in =
