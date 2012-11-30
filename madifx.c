@@ -2935,23 +2935,24 @@ static int snd_madifx_put_line_out(struct snd_kcontrol *kcontrol,
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
 	.name = xname, \
 	.index = xindex, \
+	.private_value = xindex, \
 	.info = snd_madifx_info_tx_64, \
 	.get = snd_madifx_get_tx_64, \
 	.put = snd_madifx_put_tx_64 \
 }
 
-static int madifx_tx_64(struct hdspm * hdspm)
+static int madifx_tx_64(struct hdspm * hdspm, int idx)
 {
-	return (hdspm->control_register & HDSPM_TX_64ch) ? 1 : 0;
+	return (hdspm->settings_register & (MADIFX_madi1_tx_64ch << idx)) ? 1 : 0;
 }
 
-static int madifx_set_tx_64(struct hdspm * hdspm, int out)
+static int madifx_set_tx_64(struct hdspm * hdspm, int idx, int out)
 {
 	if (out)
-		hdspm->control_register |= HDSPM_TX_64ch;
+		hdspm->settings_register |= (MADIFX_madi1_tx_64ch << idx);
 	else
-		hdspm->control_register &= ~HDSPM_TX_64ch;
-	madifx_write(hdspm, MADIFX_CONTROL_REG, hdspm->control_register);
+		hdspm->settings_register &= ~(MADIFX_madi1_tx_64ch << idx);
+	madifx_write(hdspm, MADIFX_SETTINGS_REG, hdspm->settings_register);
 
 	return 0;
 }
@@ -2964,7 +2965,8 @@ static int snd_madifx_get_tx_64(struct snd_kcontrol *kcontrol,
 	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
 
 	spin_lock_irq(&hdspm->lock);
-	ucontrol->value.integer.value[0] = madifx_tx_64(hdspm);
+	ucontrol->value.integer.value[0] = madifx_tx_64(hdspm,
+			kcontrol->private_value);
 	spin_unlock_irq(&hdspm->lock);
 	return 0;
 }
@@ -2974,14 +2976,15 @@ static int snd_madifx_put_tx_64(struct snd_kcontrol *kcontrol,
 {
 	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
 	int change;
+	int idx = kcontrol->private_value;
 	unsigned int val;
 
 	if (!snd_madifx_use_is_exclusive(hdspm))
 		return -EBUSY;
 	val = ucontrol->value.integer.value[0] & 1;
 	spin_lock_irq(&hdspm->lock);
-	change = (int) val != madifx_tx_64(hdspm);
-	madifx_set_tx_64(hdspm, val);
+	change = (int) val != madifx_tx_64(hdspm, idx);
+	madifx_set_tx_64(hdspm, idx, val);
 	spin_unlock_irq(&hdspm->lock);
 	return change;
 }
@@ -4402,6 +4405,9 @@ static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 	MADIFX_MADI_CHANNELCOUNT("MADI 1 RX #ch", 0),
 	MADIFX_MADI_CHANNELCOUNT("MADI 2 RX #ch", 1),
 	MADIFX_MADI_CHANNELCOUNT("MADI 3 RX #ch", 2),
+	HDSPM_TX_64("MADI 1 TX 64 channels mode", 0),
+	HDSPM_TX_64("MADI 2 TX 64 channels mode", 1),
+	HDSPM_TX_64("MADI 3 TX 64 channels mode", 2),
 	MADIFX_CLOCK_SELECT("Clock Selection", 0)
 };
 #endif
