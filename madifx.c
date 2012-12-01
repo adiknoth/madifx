@@ -4667,7 +4667,6 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 	struct madifx_status status;
 	struct madifx_version madifx_version;
 	struct madifx_level_buffer *levels;
-	struct madifx_ltc ltc;
 	unsigned int statusregister;
 	long unsigned int s;
 	int i = 0;
@@ -4742,50 +4741,6 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 
 		break;
 
-	case SNDRV_HDSPM_IOCTL_GET_LTC:
-		ltc.ltc = madifx_read(hdspm, HDSPM_RD_TCO);
-		i = madifx_read(hdspm, HDSPM_RD_TCO + 4);
-		if (i & HDSPM_TCO1_LTC_Input_valid) {
-			switch (i & (HDSPM_TCO1_LTC_Format_LSB |
-				HDSPM_TCO1_LTC_Format_MSB)) {
-			case 0:
-				ltc.format = fps_24;
-				break;
-			case HDSPM_TCO1_LTC_Format_LSB:
-				ltc.format = fps_25;
-				break;
-			case HDSPM_TCO1_LTC_Format_MSB:
-				ltc.format = fps_2997;
-				break;
-			default:
-				ltc.format = 30;
-				break;
-			}
-			if (i & HDSPM_TCO1_set_drop_frame_flag) {
-				ltc.frame = drop_frame;
-			} else {
-				ltc.frame = full_frame;
-			}
-		} else {
-			ltc.format = format_invalid;
-			ltc.frame = frame_invalid;
-		}
-		if (i & HDSPM_TCO1_Video_Input_Format_NTSC) {
-			ltc.input_format = ntsc;
-		} else if (i & HDSPM_TCO1_Video_Input_Format_PAL) {
-			ltc.input_format = pal;
-		} else {
-			ltc.input_format = no_video;
-		}
-
-		s = copy_to_user(argp, &ltc, sizeof(struct madifx_ltc));
-		if (0 != s) {
-			/*
-			 snd_printk(KERN_ERR "copy_to_user(.., .., %lu): %lu [LTC]\n", sizeof(struct madifx_ltc), s); */
-			return -EFAULT;
-		}
-
-		break;
 
 	case SNDRV_HDSPM_IOCTL_GET_CONFIG:
 

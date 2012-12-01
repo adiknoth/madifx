@@ -81,44 +81,6 @@ struct madifx_config {
 #define SNDRV_HDSPM_IOCTL_GET_CONFIG \
 	_IOR('H', 0x41, struct madifx_config)
 
-/**
- * If there's a TCO (TimeCode Option) board installed,
- * there are further options and status data available.
- * The madifx_ltc structure contains the current SMPTE
- * timecode and some status information and can be
- * obtained via SNDRV_HDSPM_IOCTL_GET_LTC or in the
- * madifx_status struct.
- **/
-
-enum madifx_ltc_format {
-	format_invalid,
-	fps_24,
-	fps_25,
-	fps_2997,
-	fps_30
-};
-
-enum madifx_ltc_frame {
-	frame_invalid,
-	drop_frame,
-	full_frame
-};
-
-enum madifx_ltc_input_format {
-	ntsc,
-	pal,
-	no_video
-};
-
-struct madifx_ltc {
-	unsigned int ltc;
-
-	enum madifx_ltc_format format;
-	enum madifx_ltc_frame frame;
-	enum madifx_ltc_input_format input_format;
-};
-
-#define SNDRV_HDSPM_IOCTL_GET_LTC _IOR('H', 0x46, struct madifx_mixer_ioctl)
 
 /**
  * The status data reflects the device's current state
