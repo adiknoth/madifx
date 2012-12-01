@@ -278,17 +278,6 @@ enum {
 #define MADIFX_QS_OUT_CHANNELS       52
 
 
-/* the size of a substream (1 mono data stream) */
-#define HDSPM_CHANNEL_BUFFER_SAMPLES  (16*1024)
-#define HDSPM_CHANNEL_BUFFER_BYTES    (4*HDSPM_CHANNEL_BUFFER_SAMPLES)
-
-#define HDSPM_DMA_AREA_BYTES (HDSPM_MAX_CHANNELS * HDSPM_CHANNEL_BUFFER_BYTES)
-#define HDSPM_DMA_AREA_KILOBYTES (HDSPM_DMA_AREA_BYTES/1024)
-
-#define HDSPM_RAYDAT_REV	211
-#define HDSPM_AIO_REV		212
-/* FIXME: MADIFACE_REV set to zero to avoid collision with MADIFX */
-#define HDSPM_MADIFACE_REV	0
 #define HDSPM_MADIFX_REV	213
 
 /* speed factor modes */
@@ -357,7 +346,7 @@ struct hdspm {
         struct snd_pcm_substream *playback_substream;
 
 	char *card_name;	     /* for procinfo */
-	unsigned short firmware_rev; /* dont know if relevant (yes if AES32)*/
+	unsigned short firmware_rev;
 
 	uint8_t io_type;
 
@@ -678,17 +667,6 @@ static u64 madifx_calc_dds_value(struct hdspm *hdspm, u64 period)
 	case MADIFX:
 		freq_const = 131072000000000ULL;
 		break;
-	case MADI:
-	case AES32:
-		freq_const = 110069313433624ULL;
-		break;
-	case RayDAT:
-	case AIO:
-		freq_const = 104857600000000ULL;
-		break;
-	case MADIface:
-		freq_const = 131072000000000ULL;
-		break;
 	default:
 		snd_BUG();
 		return 0;
@@ -709,16 +687,7 @@ static void madifx_set_dds_value(struct hdspm *hdspm, int rate)
 
 	switch (hdspm->io_type) {
 	case MADIFX:
-	case MADIface:
 		n = 131072000000000ULL;  /* 125 MHz */
-		break;
-	case MADI:
-	case AES32:
-		n = 110069313433624ULL;  /* 105 MHz */
-		break;
-	case RayDAT:
-	case AIO:
-		n = 104857600000000ULL;  /* 100 MHz */
 		break;
 	default:
 		snd_BUG();
@@ -3265,15 +3234,9 @@ static int snd_madifx_playback_open(struct snd_pcm_substream *substream)
 		break;
 	}
 
-	if (AES32 == hdspm->io_type) {
-		runtime->hw.rates |= SNDRV_PCM_RATE_KNOT;
-		snd_pcm_hw_constraint_list(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
-				&madifx_hw_constraints_aes32_sample_rates);
-	} else {
-		snd_pcm_hw_rule_add(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
-				snd_madifx_hw_rule_rate_out_channels, hdspm,
-				SNDRV_PCM_HW_PARAM_CHANNELS, -1);
-	}
+	snd_pcm_hw_rule_add(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
+			snd_madifx_hw_rule_rate_out_channels, hdspm,
+			SNDRV_PCM_HW_PARAM_CHANNELS, -1);
 
 	snd_pcm_hw_rule_add(runtime, 0, SNDRV_PCM_HW_PARAM_CHANNELS,
 			snd_madifx_hw_rule_out_channels, hdspm,
@@ -3338,15 +3301,9 @@ static int snd_madifx_capture_open(struct snd_pcm_substream *substream)
 		break;
 	}
 
-	if (AES32 == hdspm->io_type) {
-		runtime->hw.rates |= SNDRV_PCM_RATE_KNOT;
-		snd_pcm_hw_constraint_list(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
-				&madifx_hw_constraints_aes32_sample_rates);
-	} else {
-		snd_pcm_hw_rule_add(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
-				snd_madifx_hw_rule_rate_in_channels, hdspm,
-				SNDRV_PCM_HW_PARAM_CHANNELS, -1);
-	}
+	snd_pcm_hw_rule_add(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
+			snd_madifx_hw_rule_rate_in_channels, hdspm,
+			SNDRV_PCM_HW_PARAM_CHANNELS, -1);
 
 	snd_pcm_hw_rule_add(runtime, 0, SNDRV_PCM_HW_PARAM_CHANNELS,
 			snd_madifx_hw_rule_in_channels, hdspm,
@@ -4005,19 +3962,13 @@ static int __devinit snd_madifx_probe(struct pci_dev *pci,
 		return err;
 	}
 
-	if (hdspm->io_type != MADIface) {
-		sprintf(card->shortname, "%s_%x",
+	sprintf(card->shortname, "%s_%x",
 			hdspm->card_name,
 			hdspm->serial);
-		sprintf(card->longname, "%s S/N 0x%x at 0x%lx, irq %d",
+	sprintf(card->longname, "%s S/N 0x%x at 0x%lx, irq %d",
 			hdspm->card_name,
 			hdspm->serial,
 			hdspm->port, hdspm->irq);
-	} else {
-		sprintf(card->shortname, "%s", hdspm->card_name);
-		sprintf(card->longname, "%s at 0x%lx, irq %d",
-				hdspm->card_name, hdspm->port, hdspm->irq);
-	}
 
 	err = snd_card_register(card);
 	if (err < 0) {

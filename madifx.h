@@ -24,11 +24,6 @@
 #define HDSPM_MAX_CHANNELS      196
 
 enum madifx_io_type {
-	MADI,
-	MADIface,
-	AIO,
-	AES32,
-	RayDAT,
 	MADIFX
 };
 
