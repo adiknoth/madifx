@@ -2813,14 +2813,14 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 			   Outputstream 25 with 2 channels at byte offset 65536     Phones
 			   */
 
-            /* Note: channels start at zero */
-            last_madi_channel = 193;
+			/* Note: channels start at zero */
+			last_madi_channel = 193;
 			break;
 		case ds:
-            last_madi_channel = 97;
+			last_madi_channel = 97;
 			break;
 		case qs:
-            last_madi_channel = 49;
+			last_madi_channel = 49;
 			break;
 		}
         info->offset = (info->channel < 2) ?
