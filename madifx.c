@@ -731,6 +731,38 @@ static void madifx_set_dds_value(struct hdspm *hdspm, int rate)
 	madifx_write(hdspm, MADIFX_FREQ_REG, (u32)n);
 }
 
+static int madifx_get_external_rate(struct hdspm *hdspm)
+{
+	int current_clock = madifx_get_clock_select(hdspm);
+
+	switch (current_clock) {
+	case 0:
+		/* Master. Should not happen */
+		break;
+	case 1:
+	case 2:
+		/* 1 == AES, 2 == WC; map to enum * madifx_syncsource,
+		 * so that 3 == AES, 4 == * WC */
+		current_clock += 2;
+		break;
+	case 3:
+	case 4:
+	case 5:
+		/* MADI1 == 3, MADI2 == 4, MADI3 == 5 map to
+		 * MADI1 == 0, MADI2 = 1, MADI3 == 2
+		 */
+		current_clock -= 3;
+		break;
+	default:
+		snd_printk(KERN_ERR "MADIFX: Unknown clock source\n");
+		return 0;
+	}
+
+
+
+	return HDSPM_bit2freq(madifx_external_freq_index(hdspm, current_clock));
+}
+
 /* dummy set rate lets see what happens */
 static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally)
 {
@@ -757,37 +789,8 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 				   "as a clock master.\n");
 			not_set = 1;
 		} else {
-			int current_clock = madifx_get_clock_select(hdspm);
-			int external_freq;
+			int external_freq = madifx_get_external_rate(hdspm);
 
-			switch (current_clock) {
-			case 0:
-				/* Master. Should not happen */
-				break;
-			case 1:
-			case 2:
-				/* 1 == AES, 2 == WC; map to enum * madifx_syncsource,
-				 * so that 3 == AES, 4 == * WC */
-				current_clock += 2;
-				break;
-			case 3:
-			case 4:
-			case 5:
-				/* MADI1 == 3, MADI2 == 4, MADI3 == 5 map to
-				 * MADI1 == 0, MADI2 = 1, MADI3 == 2
-				 */
-				current_clock -= 3;
-				break;
-			default:
-				snd_printk(KERN_ERR "MADIFX: Unknown clock source\n");
-				return -EINVAL;
-			}
-
-
-
-			/* hw_param request while in slave mode */
-			external_freq =
-				HDSPM_bit2freq(madifx_external_freq_index(hdspm, current_clock));
 
 
 			if (rate != external_freq) {
@@ -1527,7 +1530,6 @@ static int madifx_system_clock_mode(struct hdspm *hdspm)
 
 	status = madifx_read(hdspm, MADIFX_RD_INP_STATUS);
 	if ((status & (MADIFX_SelSyncRef0 * 7)) == (MADIFX_SelSyncRef0 * 7)) {
-		snd_printk(KERN_INFO "MADFIX: We are clock master\n");
 		return 0;
 	}
 
@@ -1678,6 +1680,12 @@ static int madifx_set_clock_select(struct hdspm * hdspm, int val)
 	hdspm->settings_register &= ~MADIFX_SyncRefMask;
 	hdspm->settings_register |= MADIFX_SyncRef0 * val;
 	madifx_write(hdspm, MADIFX_SETTINGS_REG, hdspm->settings_register);
+
+	if (val > 0) {
+		/* switched to slave mode */
+		hdspm->system_sample_rate = madifx_get_external_rate(hdspm);
+	}
+
 	return 0;
 }
 
