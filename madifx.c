@@ -710,8 +710,8 @@ static int madifx_get_external_rate(struct hdspm *hdspm)
 		break;
 	case 1:
 	case 2:
-		/* 1 == AES, 2 == WC; map to enum * madifx_syncsource,
-		 * so that 3 == AES, 4 == * WC */
+		/* 1 == AES, 2 == WC; map to enum madifx_syncsource,
+		 * so that 3 == AES, 4 == WC */
 		current_clock += 2;
 		break;
 	case 3:
