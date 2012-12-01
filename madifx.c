@@ -2003,14 +2003,9 @@ static int snd_madifx_info_channelcount(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-
-static int snd_madifx_get_channelcount(struct snd_kcontrol *kcontrol,
-					      struct snd_ctl_elem_value *
-					      ucontrol)
+static int madifx_get_madichannelcount(struct hdspm *hdspm, int idx)
 {
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
 	int rate_index;
-	int idx = kcontrol->private_value;
 	int i = 0;
 	int inp_status;
 	int rx_64ch_bit = (MADIFX_madi1_rx_64ch << idx);
@@ -2033,7 +2028,21 @@ static int snd_madifx_get_channelcount(struct snd_kcontrol *kcontrol,
 		if (rate_index > 6) i += 2; /* Quad speed */
 	}
 
-	ucontrol->value.enumerated.item[0] = i;
+	return i;
+
+}
+
+
+static int snd_madifx_get_channelcount(struct snd_kcontrol *kcontrol,
+					      struct snd_ctl_elem_value *
+					      ucontrol)
+{
+	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
+	int idx = kcontrol->private_value;
+
+
+	ucontrol->value.enumerated.item[0] =
+		madifx_get_madichannelcount(hdspm, idx);
 
 	return 0;
 }
