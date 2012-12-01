@@ -90,14 +90,14 @@ enum madifx_sync {
 	madifx_sync_sync = 2
 };
 
-enum madifx_madi_input {
-	madifx_input_optical = 0,
-	madifx_input_coax = 1
-};
-
 enum madifx_madi_channel_format {
 	madifx_format_ch_64 = 0,
-	madifx_format_ch_56 = 1
+	madifx_format_ch_56 = 1,
+	madifx_format_ch_32 = 2,
+	madifx_format_ch_28 = 3,
+	madifx_format_ch_16 = 4,
+	madifx_format_ch_14 = 5,
+	madifx_format_ch_nolock = 6
 };
 
 enum madifx_madi_frame_format {
@@ -114,27 +114,28 @@ enum madifx_syncsource {
 	syncsource_none = 5
 };
 
-struct madifx_status {
-	uint8_t card_type; /* enum madifx_io_type */
-	enum madifx_syncsource autosync_source;
-
-	uint64_t card_clock;
-	uint32_t master_period;
-
-	union {
-		struct {
-			uint8_t sync_wc; /* enum madifx_sync */
-			uint8_t sync_madi; /* enum madifx_sync */
-			uint8_t sync_tco; /* enum madifx_sync */
-			uint8_t sync_in; /* enum madifx_sync */
-			uint8_t madi_input; /* enum madifx_madi_input */
-			uint8_t channel_format; /* enum madifx_madi_channel_format */
-			uint8_t frame_format; /* enum madifx_madi_frame_format */
-		} madi;
-	} card_specific;
+enum madifx_clocksource {
+	clock_internal = 0,
+	clock_aes = 1,
+	clock_wc = 2,
+	clock_madi1 = 3,
+	clock_madi2 = 4,
+	clock_madi3 = 5
 };
 
-#define SNDRV_HDSPM_IOCTL_GET_STATUS \
+
+struct madifx_status {
+	uint8_t card_type; /* enum madifx_io_type */
+	uint8_t clock_selection; /* enum madi_clocksource */
+
+	uint32_t system_sample_rate;
+
+	uint8_t sync_check[5]; /* enum madifx_sync, array idx: enum madifx_syncsource */
+	uint8_t madi_channelcount[3]; /* enum madifx_madi_channel_format */
+	uint32_t external_sample_rates[5]; /* enum madifx_syncsource */
+};
+
+#define SNDRV_MADIFX_IOCTL_GET_STATUS \
 	_IOR('H', 0x47, struct madifx_status)
 
 

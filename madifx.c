@@ -4777,38 +4777,28 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 			return -EFAULT;
 		break;
 
-	case SNDRV_HDSPM_IOCTL_GET_STATUS:
+	case SNDRV_MADIFX_IOCTL_GET_STATUS:
 		memset(&status, 0, sizeof(status));
 
 		status.card_type = hdspm->io_type;
 
-		status.autosync_source = madifx_autosync_ref(hdspm);
+		status.clock_selection = madifx_get_clock_select(hdspm);
 
-		status.card_clock = 110069313433624ULL;
-		status.master_period = madifx_read(hdspm, MADIFX_RD_PLL_FREQ);
+		status.system_sample_rate =
+			madifx_get_system_sample_rate(hdspm);
 
-		switch (hdspm->io_type) {
-		case MADI:
-		case MADIface:
-			status.card_specific.madi.sync_wc =
-				madifx_wc_sync_check(hdspm);
-			status.card_specific.madi.sync_tco =
-				madifx_tco_sync_check(hdspm);
-			status.card_specific.madi.sync_in =
-				madifx_sync_in_sync_check(hdspm);
 
-			statusregister =
-				madifx_read(hdspm, HDSPM_statusRegister);
-			status.card_specific.madi.madi_input =
-				(statusregister & HDSPM_AB_int) ? 1 : 0;
-			status.card_specific.madi.channel_format =
-				(statusregister & HDSPM_RX_64ch) ? 1 : 0;
-			/* TODO: Mac driver sets it when f_s>48kHz */
-			status.card_specific.madi.frame_format = 0;
-
-		default:
-			break;
+		for (i=0; i < ARRAY_SIZE(status.sync_check); i++) {
+			status.sync_check[i] = madifx_sync_check(hdspm, i);
+			status.external_sample_rates[i] =
+				HDSPM_bit2freq(madifx_external_freq_index(hdspm, i));
 		}
+
+		for (i=0; i < ARRAY_SIZE(status.madi_channelcount); i++) {
+			status.madi_channelcount[i] =
+				madifx_get_madichannelcount(hdspm, i);
+		}
+
 
 		if (copy_to_user(argp, &status, sizeof(status)))
 			return -EFAULT;
