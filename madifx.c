@@ -79,21 +79,13 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define MADIFX_midi_out1_data   (9*4)
 #define MADIFX_midi_out2_data	(10*4)
 #define MADIFX_midi_out3_data	(11*4)
+#define MADIFX_ENABLE_OUTPUT	(64*4)
+#define MADIFX_ENABLE_INPUT	(96*4)
 #define MADIFX_MIXER_LIST_VOL	(16384*4)
 #define MADIFX_MIXER_LIST_CH	(20480*4)
 #define MADIFX_WR_OUTPUT_GAIN	((24576+256)*4)
 
 #define MADIFX_SAMPLE_FRAMES_PER_BUFFER		8192
-
-
-#define HDSPM_control2Reg	     256  /* not in specs ???????? */
-#define HDSPM_midiDataOut0	     352  /* just believe in old code */
-#define HDSPM_midiDataOut1	     356
-#define HDSPM_eeprom_wr		     384  /* for AES32 */
-
-/* DMA enable for 64 channels, only Bit 0 is relevant */
-#define HDSPM_outputEnableBase       384
-#define HDSPM_inputEnableBase        256
 
 #define MADIFX_PAGE_ADDRESS_LIST   (8192*4)
 
@@ -108,20 +100,6 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 
 /* --- Read registers. ---
    These are defined as byte-offsets from the iobase value */
-#define HDSPM_statusRegister    0
-/*#define HDSPM_statusRegister2  96 */
-/* after RME Windows driver sources, status2 is 4-byte word # 48 = word at
- * offset 192, for AES32 *and* MADI
- * => need to check that offset 192 is working on MADI */
-#define HDSPM_statusRegister2  192
-#define HDSPM_timecodeRegister 128
-
-/* AIO, RayDAT */
-#define HDSPM_RD_STATUS_0 0
-#define HDSPM_RD_STATUS_1 64
-#define HDSPM_RD_STATUS_2 128
-#define HDSPM_RD_STATUS_3 192
-
 
 #define MADIFX_RD_STATUS		(0*4)
 #define MADIFX_RD_INP_STATUS	(1*4)
@@ -260,62 +238,6 @@ enum {
 #define MADIFX_RD_RMS_OUT_PRE	(4096*1)
 #define MADIFX_RD_PEAK_OUT_PRE	(4608*1)
 
-
-/* the meters are regular i/o-mapped registers, but offset
-   considerably from the rest. the peak registers are reset
-   when read; the least-significant 4 bits are full-scale counters;
-   the actual peak value is in the most-significant 24 bits.
-*/
-
-#define HDSPM_MADI_INPUT_PEAK		4096
-#define HDSPM_MADI_PLAYBACK_PEAK	4352
-#define HDSPM_MADI_OUTPUT_PEAK		4608
-
-#define HDSPM_MADI_INPUT_RMS_L		6144
-#define HDSPM_MADI_PLAYBACK_RMS_L	6400
-#define HDSPM_MADI_OUTPUT_RMS_L		6656
-
-#define HDSPM_MADI_INPUT_RMS_H		7168
-#define HDSPM_MADI_PLAYBACK_RMS_H	7424
-#define HDSPM_MADI_OUTPUT_RMS_H		7680
-
-/* --- Control Register bits --------- */
-
-#define HDSPM_ClockModeMaster      (1<<4) /* 1=Master, 0=Autosync */
-#define HDSPM_c0Master		0x1    /* Master clock bit in settings
-					  register [RayDAT, AIO] */
-
-
-#define HDSPM_Frequency0  (1<<6)  /* 0=44.1kHz/88.2kHz 1=48kHz/96kHz */
-#define HDSPM_Frequency1  (1<<7)  /* 0=32kHz/64kHz */
-#define HDSPM_DoubleSpeed (1<<8)  /* 0=normal speed, 1=double speed */
-#define HDSPM_QuadSpeed   (1<<31) /* quad speed bit */
-
-#define HDSPM_Professional (1<<9) /* Professional */ /* AES32 ONLY */
-#define HDSPM_TX_64ch     (1<<10) /* Output 64channel MODE=1,
-				     56channelMODE=0 */ /* MADI ONLY*/
-#define HDSPM_Emphasis    (1<<10) /* Emphasis */ /* AES32 ONLY */
-
-#define HDSPM_AutoInp     (1<<11) /* Auto Input (takeover) == Safe Mode,
-                                     0=off, 1=on  */ /* MADI ONLY */
-#define HDSPM_Dolby       (1<<11) /* Dolby = "NonAudio" ?? */ /* AES32 ONLY */
-
-#define HDSPM_InputSelect0 (1<<14) /* Input select 0= optical, 1=coax
-				    * -- MADI ONLY
-				    */
-#define HDSPM_InputSelect1 (1<<15) /* should be 0 */
-
-#define HDSPM_SyncRef2     (1<<13)
-#define HDSPM_SyncRef3     (1<<25)
-
-#define HDSPM_SMUX         (1<<18) /* Frame ??? */ /* MADI ONY */
-#define HDSPM_clr_tms      (1<<19) /* clear track marker, do not use
-                                      AES additional bits in
-				      lower 5 Audiodatabits ??? */
-#define HDSPM_taxi_reset   (1<<20) /* ??? */ /* MADI ONLY ? */
-#define HDSPM_WCK48        (1<<20) /* Frame ??? = HDSPM_SMUX */ /* AES32 ONLY */
-
-
 /* MADIFX MIDI Interrupt enable */
 #define MADIFX_IEN0				0x00002000
 #define MADIFX_IEN1				0x00004000
@@ -328,239 +250,25 @@ enum {
 #define MADIFX_mIRQ2		0x40000000
 #define MADIFX_mIRQ3		0x80000000
 
-
-#define HDSPM_LineOut (1<<24) /* Analog Out on channel 63/64 on=1, mute=0 */
-
-#define HDSPM_DS_DoubleWire (1<<26) /* AES32 ONLY */
-#define HDSPM_QS_DoubleWire (1<<27) /* AES32 ONLY */
-#define HDSPM_QS_QuadWire   (1<<28) /* AES32 ONLY */
-
-#define HDSPM_wclk_sel (1<<30)
-
 /* --- bit helper defines */
 #define MADIFX_LatencyMask  (MADIFX_LAT_0|MADIFX_LAT_1|MADIFX_LAT_2|MADIFX_LAT_3)
-#define HDSPM_FrequencyMask  (HDSPM_Frequency0|HDSPM_Frequency1|\
-			      HDSPM_DoubleSpeed|HDSPM_QuadSpeed)
-#define HDSPM_InputMask      (HDSPM_InputSelect0|HDSPM_InputSelect1)
-#define HDSPM_InputOptical   0
-#define HDSPM_InputCoaxial   (HDSPM_InputSelect0)
-#define HDSPM_SyncRefMask    (HDSPM_SyncRef0|HDSPM_SyncRef1|\
-			      HDSPM_SyncRef2|HDSPM_SyncRef3)
-
-#define HDSPM_c0_SyncRef0      0x2
-#define HDSPM_c0_SyncRef1      0x4
-#define HDSPM_c0_SyncRef2      0x8
-#define HDSPM_c0_SyncRef3      0x10
-#define HDSPM_c0_SyncRefMask   (HDSPM_c0_SyncRef0 | HDSPM_c0_SyncRef1 |\
-				HDSPM_c0_SyncRef2 | HDSPM_c0_SyncRef3)
-
-#define HDSPM_SYNC_FROM_WORD    0	/* Preferred sync reference */
-#define HDSPM_SYNC_FROM_MADI    1	/* choices - used by "pref_sync_ref" */
-#define HDSPM_SYNC_FROM_SYNC_IN 3
-
-#define HDSPM_Frequency32KHz    HDSPM_Frequency0
-#define HDSPM_Frequency44_1KHz  HDSPM_Frequency1
-#define HDSPM_Frequency48KHz   (HDSPM_Frequency1|HDSPM_Frequency0)
-#define HDSPM_Frequency64KHz   (HDSPM_DoubleSpeed|HDSPM_Frequency0)
-#define HDSPM_Frequency88_2KHz (HDSPM_DoubleSpeed|HDSPM_Frequency1)
-#define HDSPM_Frequency96KHz   (HDSPM_DoubleSpeed|HDSPM_Frequency1|\
-				HDSPM_Frequency0)
-#define HDSPM_Frequency128KHz   (HDSPM_QuadSpeed|HDSPM_Frequency0)
-#define HDSPM_Frequency176_4KHz   (HDSPM_QuadSpeed|HDSPM_Frequency1)
-#define HDSPM_Frequency192KHz   (HDSPM_QuadSpeed|HDSPM_Frequency1|\
-				 HDSPM_Frequency0)
-
-
-/* Synccheck Status */
-#define HDSPM_SYNC_CHECK_NO_LOCK 0
-#define HDSPM_SYNC_CHECK_LOCK    1
-#define HDSPM_SYNC_CHECK_SYNC	 2
-
-/* AutoSync References - used by "autosync_ref" control switch */
-#define HDSPM_AUTOSYNC_FROM_WORD      0
-#define HDSPM_AUTOSYNC_FROM_MADI      1
-#define HDSPM_AUTOSYNC_FROM_SYNC_IN   3
-#define HDSPM_AUTOSYNC_FROM_NONE      4
-
-/* Possible sources of MADI input */
-#define HDSPM_OPTICAL 0		/* optical   */
-#define HDSPM_COAXIAL 1		/* BNC */
 
 #define madifx_encode_latency(x)       (((x)<<8) & MADIFX_LatencyMask)
 #define madifx_decode_latency(x)       ((((x) & MADIFX_LatencyMask)>>8))
 
-#define madifx_encode_in(x) (((x)&0x3)<<14)
-#define madifx_decode_in(x) (((x)>>14)&0x3)
-
 /* speemode is enum 0,1,2 for ss/ds/qs, so (1<<speedmode) returns 1, 2, 4. */
 #define madifx_speed_multiplier(x)	(1<<(x)->speedmode)
 
-/* --- control2 register bits --- */
-#define HDSPM_TMS             (1<<0)
-#define HDSPM_TCK             (1<<1)
-#define HDSPM_TDI             (1<<2)
-#define HDSPM_JTAG            (1<<3)
-#define HDSPM_PWDN            (1<<4)
-#define HDSPM_PROGRAM	      (1<<5)
-#define HDSPM_CONFIG_MODE_0   (1<<6)
-#define HDSPM_CONFIG_MODE_1   (1<<7)
-/*#define HDSPM_VERSION_BIT     (1<<8) not defined any more*/
-#define HDSPM_BIGENDIAN_MODE  (1<<9)
-#define HDSPM_RD_MULTIPLE     (1<<10)
 
-/* --- Status Register bits --- */ /* MADI ONLY */ /* Bits defined here and
-     that do not conflict with specific bits for AES32 seem to be valid also
-     for the AES32
- */
 #define HDSPM_audioIRQPending    (1<<0)	/* IRQ is high and pending */
-#define HDSPM_RX_64ch            (1<<1)	/* Input 64chan. MODE=1, 56chn MODE=0 */
-#define HDSPM_AB_int             (1<<2)	/* InputChannel Opt=0, Coax=1
-					 * (like inp0)
-					 */
-
-#define HDSPM_madiLock           (1<<3)	/* MADI Locked =1, no=0 */
-#define HDSPM_madiSync          (1<<18) /* MADI is in sync */
 
 
-#define HDSPM_syncInLock 0x00010000 /* Sync In lock status FOR HDSPe MADI! */
-#define HDSPM_syncInSync 0x00020000 /* Sync In sync status FOR HDSPe MADI! */
-
-#define HDSPM_BufferPositionMask 0x000FFC0 /* Bit 6..15 : h/w buffer pointer */
-			/* since 64byte accurate, last 6 bits are not used */
-
-
-
-#define HDSPM_DoubleSpeedStatus (1<<19) /* (input) card in double speed */
-
-#define HDSPM_madiFreq0         (1<<22)	/* system freq 0=error */
-#define HDSPM_madiFreq1         (1<<23)	/* 1=32, 2=44.1 3=48 */
-#define HDSPM_madiFreq2         (1<<24)	/* 4=64, 5=88.2 6=96 */
-#define HDSPM_madiFreq3         (1<<25)	/* 7=128, 8=176.4 9=192 */
-
-#define HDSPM_BufferID          (1<<26)	/* (Double)Buffer ID toggles with
-					 * Interrupt
-					 */
-
-
-
-/* --- status bit helpers */
-#define HDSPM_madiFreqMask  (HDSPM_madiFreq0|HDSPM_madiFreq1|\
-			     HDSPM_madiFreq2|HDSPM_madiFreq3)
-#define HDSPM_madiFreq32    (HDSPM_madiFreq0)
-#define HDSPM_madiFreq44_1  (HDSPM_madiFreq1)
-#define HDSPM_madiFreq48    (HDSPM_madiFreq0|HDSPM_madiFreq1)
-#define HDSPM_madiFreq64    (HDSPM_madiFreq2)
-#define HDSPM_madiFreq88_2  (HDSPM_madiFreq0|HDSPM_madiFreq2)
-#define HDSPM_madiFreq96    (HDSPM_madiFreq1|HDSPM_madiFreq2)
-#define HDSPM_madiFreq128   (HDSPM_madiFreq0|HDSPM_madiFreq1|HDSPM_madiFreq2)
-#define HDSPM_madiFreq176_4 (HDSPM_madiFreq3)
-#define HDSPM_madiFreq192   (HDSPM_madiFreq3|HDSPM_madiFreq0)
-
-/* Status2 Register bits */ /* MADI ONLY */
-
-#define HDSPM_version0 (1<<0)	/* not really defined but I guess */
-#define HDSPM_version1 (1<<1)	/* in former cards it was ??? */
-#define HDSPM_version2 (1<<2)
-
-#define HDSPM_wcLock (1<<3)	/* Wordclock is detected and locked */
-#define HDSPM_wcSync (1<<4)	/* Wordclock is in sync with systemclock */
-
-#define HDSPM_wc_freq0 (1<<5)	/* input freq detected via autosync  */
-#define HDSPM_wc_freq1 (1<<6)	/* 001=32, 010==44.1, 011=48, */
-#define HDSPM_wc_freq2 (1<<7)	/* 100=64, 101=88.2, 110=96, */
-/* missing Bit   for               111=128, 1000=176.4, 1001=192 */
-
-#define HDSPM_SyncRef0 0x10000  /* Sync Reference */
-#define HDSPM_SyncRef1 0x20000
-
-#define HDSPM_SelSyncRef0 (1<<8)	/* AutoSync Source */
-#define HDSPM_SelSyncRef1 (1<<9)	/* 000=word, 001=MADI, */
-#define HDSPM_SelSyncRef2 (1<<10)	/* 111=no valid signal */
-
-#define HDSPM_wc_valid (HDSPM_wcLock|HDSPM_wcSync)
-
-#define HDSPM_wcFreqMask  (HDSPM_wc_freq0|HDSPM_wc_freq1|HDSPM_wc_freq2)
-#define HDSPM_wcFreq32    (HDSPM_wc_freq0)
-#define HDSPM_wcFreq44_1  (HDSPM_wc_freq1)
-#define HDSPM_wcFreq48    (HDSPM_wc_freq0|HDSPM_wc_freq1)
-#define HDSPM_wcFreq64    (HDSPM_wc_freq2)
-#define HDSPM_wcFreq88_2  (HDSPM_wc_freq0|HDSPM_wc_freq2)
-#define HDSPM_wcFreq96    (HDSPM_wc_freq1|HDSPM_wc_freq2)
-
-#define HDSPM_status1_F_0 0x0400000
-#define HDSPM_status1_F_1 0x0800000
-#define HDSPM_status1_F_2 0x1000000
-#define HDSPM_status1_F_3 0x2000000
-#define HDSPM_status1_freqMask (HDSPM_status1_F_0|HDSPM_status1_F_1|HDSPM_status1_F_2|HDSPM_status1_F_3)
-
-
-#define HDSPM_SelSyncRefMask       (HDSPM_SelSyncRef0|HDSPM_SelSyncRef1|\
-				    HDSPM_SelSyncRef2)
-#define HDSPM_SelSyncRef_WORD      0
-#define HDSPM_SelSyncRef_MADI      (HDSPM_SelSyncRef0)
-#define HDSPM_SelSyncRef_SyncIn    (HDSPM_SelSyncRef0|HDSPM_SelSyncRef1)
-#define HDSPM_SelSyncRef_NVALID    (HDSPM_SelSyncRef0|HDSPM_SelSyncRef1|\
-				    HDSPM_SelSyncRef2)
-
-/*
-   For AES32, bits for status, status2 and timecode are different
-*/
-/* status */
-#define HDSPM_AES32_wcLock	0x0200000
-#define HDSPM_AES32_wcFreq_bit  22
-/* (status >> HDSPM_AES32_wcFreq_bit) & 0xF gives WC frequency (cf function
-  HDSPM_bit2freq */
-#define HDSPM_AES32_syncref_bit  16
-/* (status >> HDSPM_AES32_syncref_bit) & 0xF gives sync source */
-
-#define HDSPM_AES32_AUTOSYNC_FROM_WORD 0
-#define HDSPM_AES32_AUTOSYNC_FROM_AES1 1
-#define HDSPM_AES32_AUTOSYNC_FROM_AES2 2
-#define HDSPM_AES32_AUTOSYNC_FROM_AES3 3
-#define HDSPM_AES32_AUTOSYNC_FROM_AES4 4
-#define HDSPM_AES32_AUTOSYNC_FROM_AES5 5
-#define HDSPM_AES32_AUTOSYNC_FROM_AES6 6
-#define HDSPM_AES32_AUTOSYNC_FROM_AES7 7
-#define HDSPM_AES32_AUTOSYNC_FROM_AES8 8
-#define HDSPM_AES32_AUTOSYNC_FROM_NONE 9
-
-/*  status2 */
-/* HDSPM_LockAES_bit is given by HDSPM_LockAES >> (AES# - 1) */
-#define HDSPM_LockAES   0x80
-#define HDSPM_LockAES1  0x80
-#define HDSPM_LockAES2  0x40
-#define HDSPM_LockAES3  0x20
-#define HDSPM_LockAES4  0x10
-#define HDSPM_LockAES5  0x8
-#define HDSPM_LockAES6  0x4
-#define HDSPM_LockAES7  0x2
-#define HDSPM_LockAES8  0x1
-/*
-   Timecode
-   After windows driver sources, bits 4*i to 4*i+3 give the input frequency on
-   AES i+1
- bits 3210
-      0001  32kHz
-      0010  44.1kHz
-      0011  48kHz
-      0100  64kHz
-      0101  88.2kHz
-      0110  96kHz
-      0111  128kHz
-      1000  176.4kHz
-      1001  192kHz
-  NB: Timecode register doesn't seem to work on AES32 card revision 230
-*/
 
 /* Mixer Values */
 #define UNITY_GAIN          32768	/* = 65536/2 */
 #define MINUS_INFINITY_GAIN 0
 
 /* Number of channels for different Speed Modes */
-#define MADI_SS_CHANNELS       64
-#define MADI_DS_CHANNELS       32
-#define MADI_QS_CHANNELS       16
-
 #define MADIFX_SS_IN_CHANNELS       194
 #define MADIFX_DS_IN_CHANNELS       98
 #define MADIFX_QS_IN_CHANNELS       50
@@ -569,28 +277,11 @@ enum {
 #define MADIFX_DS_OUT_CHANNELS       100
 #define MADIFX_QS_OUT_CHANNELS       52
 
-#define RAYDAT_SS_CHANNELS     36
-#define RAYDAT_DS_CHANNELS     20
-#define RAYDAT_QS_CHANNELS     12
-
-#define AIO_IN_SS_CHANNELS        14
-#define AIO_IN_DS_CHANNELS        10
-#define AIO_IN_QS_CHANNELS        8
-#define AIO_OUT_SS_CHANNELS        16
-#define AIO_OUT_DS_CHANNELS        12
-#define AIO_OUT_QS_CHANNELS        10
-
-#define AES32_CHANNELS		16
 
 /* the size of a substream (1 mono data stream) */
 #define HDSPM_CHANNEL_BUFFER_SAMPLES  (16*1024)
 #define HDSPM_CHANNEL_BUFFER_BYTES    (4*HDSPM_CHANNEL_BUFFER_SAMPLES)
 
-/* the size of the area we need to allocate for DMA transfers. the
-   size is the same regardless of the number of channels, and
-   also the latency to use.
-   for one direction !!!
-*/
 #define HDSPM_DMA_AREA_BYTES (HDSPM_MAX_CHANNELS * HDSPM_CHANNEL_BUFFER_BYTES)
 #define HDSPM_DMA_AREA_KILOBYTES (HDSPM_DMA_AREA_BYTES/1024)
 
@@ -732,8 +423,6 @@ struct hdspm {
 	dma_addr_t *dmaPageTable;
 	struct snd_dma_buffer dmaLevelBuffer;
 
-	/* FIXME: drop texts_autosync later */
-	char **texts_autosync;
 	char **texts_clocksource;
 	int texts_autosync_items;
 	int texts_clocksource_items;
@@ -772,6 +461,8 @@ static int __devinit snd_madifx_create_pcm(struct snd_card *card,
 static inline void snd_madifx_initialize_midi_flush(struct hdspm *hdspm);
 static int madifx_update_simple_mixer_controls(struct hdspm *hdspm);
 static int madifx_autosync_ref(struct hdspm *hdspm);
+static int madifx_external_freq_index(struct hdspm *hdspm, enum madifx_syncsource port);
+static int madifx_get_clock_select(struct hdspm * hdspm);
 static int snd_madifx_set_defaults(struct hdspm *hdspm);
 static int madifx_system_clock_mode(struct hdspm *hdspm);
 
@@ -850,12 +541,12 @@ static int madifx_write_pb_gain(struct hdspm *hdspm, unsigned int chan,
 /* enable DMA for specific channels, now available for DSP-MADI */
 static inline void snd_madifx_enable_in(struct hdspm * hdspm, int i, int v)
 {
-	madifx_write(hdspm, HDSPM_inputEnableBase + (4 * i), v);
+	madifx_write(hdspm, MADIFX_ENABLE_INPUT + (4 * i), v);
 }
 
 static inline void snd_madifx_enable_out(struct hdspm * hdspm, int i, int v)
 {
-	madifx_write(hdspm, HDSPM_outputEnableBase + (4 * i), v);
+	madifx_write(hdspm, MADIFX_ENABLE_OUTPUT + (4 * i), v);
 }
 
 /* check if same process is writing and reading */
@@ -873,170 +564,6 @@ static int snd_madifx_use_is_exclusive(struct hdspm *hdspm)
 	return ret;
 }
 
-/* check for external sample rate */
-static int madifx_external_sample_rate(struct hdspm *hdspm)
-{
-	unsigned int status, status2, timecode;
-	int syncref, rate = 0, rate_bits;
-
-	switch (hdspm->io_type) {
-	case AES32:
-		status2 = madifx_read(hdspm, HDSPM_statusRegister2);
-		status = madifx_read(hdspm, HDSPM_statusRegister);
-		timecode = madifx_read(hdspm, HDSPM_timecodeRegister);
-
-		syncref = madifx_autosync_ref(hdspm);
-
-		if (syncref == HDSPM_AES32_AUTOSYNC_FROM_WORD &&
-				status & HDSPM_AES32_wcLock)
-			return HDSPM_bit2freq((status >> HDSPM_AES32_wcFreq_bit) & 0xF);
-
-		if (syncref >= HDSPM_AES32_AUTOSYNC_FROM_AES1 &&
-				syncref <= HDSPM_AES32_AUTOSYNC_FROM_AES8 &&
-				status2 & (HDSPM_LockAES >>
-				(syncref - HDSPM_AES32_AUTOSYNC_FROM_AES1)))
-			return HDSPM_bit2freq((timecode >> (4*(syncref-HDSPM_AES32_AUTOSYNC_FROM_AES1))) & 0xF);
-		return 0;
-		break;
-
-	case MADIface:
-		status = madifx_read(hdspm, HDSPM_statusRegister);
-
-		if (!(status & HDSPM_madiLock)) {
-			rate = 0;  /* no lock */
-		} else {
-			switch (status & (HDSPM_status1_freqMask)) {
-			case HDSPM_status1_F_0*1:
-				rate = 32000; break;
-			case HDSPM_status1_F_0*2:
-				rate = 44100; break;
-			case HDSPM_status1_F_0*3:
-				rate = 48000; break;
-			case HDSPM_status1_F_0*4:
-				rate = 64000; break;
-			case HDSPM_status1_F_0*5:
-				rate = 88200; break;
-			case HDSPM_status1_F_0*6:
-				rate = 96000; break;
-			case HDSPM_status1_F_0*7:
-				rate = 128000; break;
-			case HDSPM_status1_F_0*8:
-				rate = 176400; break;
-			case HDSPM_status1_F_0*9:
-				rate = 192000; break;
-			default:
-				rate = 0; break;
-			}
-		}
-
-		break;
-
-	case MADI:
-	case AIO:
-	case RayDAT:
-	case MADIFX:
-		/* FIXME: MADIFX is just a wild guess */
-		status2 = madifx_read(hdspm, HDSPM_statusRegister2);
-		status = madifx_read(hdspm, HDSPM_statusRegister);
-		rate = 0;
-
-		/* if wordclock has synced freq and wordclock is valid */
-		if ((status2 & HDSPM_wcLock) != 0 &&
-				(status2 & HDSPM_SelSyncRef0) == 0) {
-
-			rate_bits = status2 & HDSPM_wcFreqMask;
-
-
-			switch (rate_bits) {
-			case HDSPM_wcFreq32:
-				rate = 32000;
-				break;
-			case HDSPM_wcFreq44_1:
-				rate = 44100;
-				break;
-			case HDSPM_wcFreq48:
-				rate = 48000;
-				break;
-			case HDSPM_wcFreq64:
-				rate = 64000;
-				break;
-			case HDSPM_wcFreq88_2:
-				rate = 88200;
-				break;
-			case HDSPM_wcFreq96:
-				rate = 96000;
-				break;
-			default:
-				rate = 0;
-				break;
-			}
-		}
-
-		/* if rate detected and Syncref is Word than have it,
-		 * word has priority to MADI
-		 */
-		if (rate != 0 &&
-		(status2 & HDSPM_SelSyncRefMask) == HDSPM_SelSyncRef_WORD)
-			return rate;
-
-		/* maybe a madi input (which is taken if sel sync is madi) */
-		if (status & HDSPM_madiLock) {
-			rate_bits = status & HDSPM_madiFreqMask;
-
-			switch (rate_bits) {
-			case HDSPM_madiFreq32:
-				rate = 32000;
-				break;
-			case HDSPM_madiFreq44_1:
-				rate = 44100;
-				break;
-			case HDSPM_madiFreq48:
-				rate = 48000;
-				break;
-			case HDSPM_madiFreq64:
-				rate = 64000;
-				break;
-			case HDSPM_madiFreq88_2:
-				rate = 88200;
-				break;
-			case HDSPM_madiFreq96:
-				rate = 96000;
-				break;
-			case HDSPM_madiFreq128:
-				rate = 128000;
-				break;
-			case HDSPM_madiFreq176_4:
-				rate = 176400;
-				break;
-			case HDSPM_madiFreq192:
-				rate = 192000;
-				break;
-			default:
-				rate = 0;
-				break;
-			}
-
-			/* QS and DS rates normally can not be detected
-			 * automatically by the card. Only exception is MADI
-			 * in 96k frame mode.
-			 *
-			 * So if we read SS values (32 .. 48k), check for
-			 * user-provided DS/QS bits in the control register
-			 * and multiply the base frequency accordingly.
-			 */
-			if (rate <= 48000) {
-				if (hdspm->control_register & HDSPM_QuadSpeed)
-					rate *= 4;
-				else if (hdspm->control_register &
-						HDSPM_DoubleSpeed)
-					rate *= 2;
-			}
-		}
-		break;
-	}
-
-	return rate;
-}
 
 /* return latency in samples per period */
 static int madifx_get_latency(struct hdspm *hdspm)
@@ -1230,20 +757,40 @@ static int madifx_set_rate(struct hdspm * hdspm, int rate, int called_internally
 				   "as a clock master.\n");
 			not_set = 1;
 		} else {
+			int current_clock = madifx_get_clock_select(hdspm);
+			int external_freq;
 
-			/* hw_param request while in AutoSync mode */
-			int external_freq =
-			    madifx_external_sample_rate(hdspm);
+			switch (current_clock) {
+			case 0:
+				/* Master. Should not happen */
+				break;
+			case 1:
+			case 2:
+				/* 1 == AES, 2 == WC; map to enum * madifx_syncsource,
+				 * so that 3 == AES, 4 == * WC */
+				current_clock += 2;
+				break;
+			case 3:
+			case 4:
+			case 5:
+				/* MADI1 == 3, MADI2 == 4, MADI3 == 5 map to
+				 * MADI1 == 0, MADI2 = 1, MADI3 == 2
+				 */
+				current_clock -= 3;
+				break;
+			default:
+				snd_printk(KERN_ERR "MADIFX: Unknown clock source\n");
+				return -EINVAL;
+			}
 
-			if (madifx_autosync_ref(hdspm) ==
-			    HDSPM_AUTOSYNC_FROM_NONE) {
 
-				snd_printk(KERN_WARNING "MADIFX: "
-					   "Detected no Externel Sync \n");
-				not_set = 1;
 
-			} else if (rate != external_freq) {
+			/* hw_param request while in slave mode */
+			external_freq =
+				HDSPM_bit2freq(madifx_external_freq_index(hdspm, current_clock));
 
+
+			if (rate != external_freq) {
 				snd_printk(KERN_WARNING "MADIFX: "
 					   "Warning: No AutoSync source for "
 					   "requested rate\n");
@@ -1749,17 +1296,6 @@ static int madifx_get_system_sample_rate(struct hdspm *hdspm)
 	rate = madifx_calc_dds_value(hdspm, period) *
 		madifx_speed_multiplier(hdspm);
 
-	if (rate > 207000) {
-		/* Unreasonable high sample rate as seen on PCI MADI cards. */
-		if (0 == madifx_system_clock_mode(hdspm)) {
-			/* master mode, return internal sample rate */
-			rate = hdspm->system_sample_rate;
-		} else {
-			/* slave mode, return external sample rate */
-			rate = madifx_external_sample_rate(hdspm);
-		}
-	}
-
 	return rate;
 }
 
@@ -1808,19 +1344,6 @@ static int snd_madifx_put_system_sample_rate(struct snd_kcontrol *kcontrol,
 }
 
 
-
-#if 0
-/**
- * Returns the sample rate class for input source <idx> for
- * 'new style' cards like the AIO and RayDAT.
- **/
-static int madifx_get_s1_sample_rate(struct hdspm *hdspm, unsigned int idx)
-{
-	int status = madifx_read(hdspm, HDSPM_RD_STATUS_2);
-
-	return (status >> (idx*4)) & 0xF;
-}
-#endif
 
 static int madifx_external_freq_index(struct hdspm *hdspm, enum madifx_syncsource port)
 {
@@ -2140,8 +1663,6 @@ static int madifx_get_clock_select(struct hdspm * hdspm)
 						     i = 0;
 						     break;
 			}
-			snd_printk(KERN_ERR "MADIFX: clocksel returns %i\n",
-					i);
 			return i;
 		}
 		break;
@@ -2231,38 +1752,6 @@ static int snd_madifx_put_clock_select(struct snd_kcontrol *kcontrol,
 	return change;
 }
 
-
-static int madifx_autosync_ref(struct hdspm *hdspm)
-{
-	if (AES32 == hdspm->io_type) {
-		unsigned int status = madifx_read(hdspm, HDSPM_statusRegister);
-		unsigned int syncref =
-			(status >> HDSPM_AES32_syncref_bit) & 0xF;
-		if (syncref == 0)
-			return HDSPM_AES32_AUTOSYNC_FROM_WORD;
-		if (syncref <= 8)
-			return syncref;
-		return HDSPM_AES32_AUTOSYNC_FROM_NONE;
-	} else if (MADI == hdspm->io_type) {
-		/* This looks at the autosync selected sync reference */
-		unsigned int status2 = madifx_read(hdspm, HDSPM_statusRegister2);
-
-		switch (status2 & HDSPM_SelSyncRefMask) {
-		case HDSPM_SelSyncRef_WORD:
-			return HDSPM_AUTOSYNC_FROM_WORD;
-		case HDSPM_SelSyncRef_MADI:
-			return HDSPM_AUTOSYNC_FROM_MADI;
-		case HDSPM_SelSyncRef_SyncIn:
-			return HDSPM_AUTOSYNC_FROM_SYNC_IN;
-		case HDSPM_SelSyncRef_NVALID:
-			return HDSPM_AUTOSYNC_FROM_NONE;
-		default:
-			return 0;
-		}
-
-	}
-	return 0;
-}
 
 
 #define MADIFX_TOGGLE_SETTING(xname, xindex) \
@@ -2524,51 +2013,6 @@ static int snd_madifx_info_sync_check(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int madifx_wc_sync_check(struct hdspm *hdspm)
-{
-	int status, status2;
-
-	switch (hdspm->io_type) {
-	case AES32:
-		status = madifx_read(hdspm, HDSPM_statusRegister);
-		if (status & HDSPM_wcSync)
-			return 2;
-		else if (status & HDSPM_wcLock)
-			return 1;
-		return 0;
-		break;
-
-	case MADI:
-		status2 = madifx_read(hdspm, HDSPM_statusRegister2);
-		if (status2 & HDSPM_wcLock) {
-			if (status2 & HDSPM_wcSync)
-				return 2;
-			else
-				return 1;
-		}
-		return 0;
-		break;
-
-	case RayDAT:
-	case AIO:
-		status = madifx_read(hdspm, HDSPM_statusRegister);
-
-		if (status & 0x2000000)
-			return 2;
-		else if (status & 0x1000000)
-			return 1;
-		return 0;
-
-		break;
-
-	case MADIface:
-		break;
-	}
-
-
-	return 3;
-}
-
 
 static int madifx_sync_check(struct hdspm *hdspm, int idx)
 {
@@ -2586,42 +2030,6 @@ static int madifx_sync_check(struct hdspm *hdspm, int idx)
 	return 0;
 }
 
-
-static int madifx_sync_in_sync_check(struct hdspm *hdspm)
-{
-	int status, lock = 0, sync = 0;
-
-	switch (hdspm->io_type) {
-	case RayDAT:
-	case AIO:
-		status = madifx_read(hdspm, HDSPM_RD_STATUS_3);
-		lock = (status & 0x400) ? 1 : 0;
-		sync = (status & 0x800) ? 1 : 0;
-		break;
-
-	case MADI:
-		status = madifx_read(hdspm, HDSPM_statusRegister);
-		lock = (status & HDSPM_syncInLock) ? 1 : 0;
-		sync = (status & HDSPM_syncInSync) ? 1 : 0;
-		break;
-
-	case AES32:
-		status = madifx_read(hdspm, HDSPM_statusRegister2);
-		lock = (status & 0x100000) ? 1 : 0;
-		sync = (status & 0x200000) ? 1 : 0;
-		break;
-
-	case MADIface:
-		break;
-	}
-
-	if (lock && sync)
-		return 2;
-	else if (lock)
-		return 1;
-
-	return 0;
-}
 
 
 
@@ -3024,29 +2432,6 @@ static int snd_madifx_set_defaults(struct hdspm * hdspm)
 	hdspm->settings_register = 0;
 
 	switch (hdspm->io_type) {
-	case MADI:
-	case MADIface:
-		hdspm->control_register =
-			0x2 + 0x8 + 0x10 + 0x80 + 0x400 + 0x4000 + 0x1000000;
-		break;
-
-	case RayDAT:
-	case AIO:
-		hdspm->settings_register = 0x1 + 0x1000;
-		/* Magic values are: LAT_0, LAT_2, Master, freq1, tx64ch, inp_0,
-		 * line_out */
-		hdspm->control_register =
-			0x2 + 0x8 + 0x10 + 0x80 + 0x400 + 0x4000 + 0x1000000;
-		break;
-
-	case AES32:
-		hdspm->control_register =
-			HDSPM_ClockModeMaster |	/* Master Cloack Mode on */
-			madifx_encode_latency(7) | /* latency max=8192samples */
-			HDSPM_SyncRef0 |	/* AES1 is syncclock */
-			HDSPM_LineOut |	/* Analog output in */
-			HDSPM_Professional;  /* Professional mode */
-		break;
 	case MADIFX:
 		/* OSX: LAT_3+BUF_SIZ_1+BUF_SIZ_2+freq1; */
 		hdspm->control_register = MADIFX_LAT_3 + MADIFX_BUF_SIZ_1 +
@@ -3085,7 +2470,7 @@ static irqreturn_t snd_madifx_interrupt(int irq, void *dev_id)
 	int i, audio, midi, schedule = 0;
 	/* cycles_t now; */
 
-	status = madifx_read(hdspm, HDSPM_statusRegister);
+	status = madifx_read(hdspm, MADIFX_RD_STATUS);
 
 	audio = status & HDSPM_audioIRQPending;
 	midi = status & (MADIFX_mIRQ0 | MADIFX_mIRQ1 |
@@ -4000,7 +3385,6 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 	struct madifx_config info;
 	struct madifx_status status;
 	struct madifx_level_buffer *levels;
-	unsigned int statusregister;
 	long unsigned int s;
 	int i = 0;
 
@@ -4515,8 +3899,6 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 	switch (hdspm->io_type) {
         /* Keep the switch if MFXT will be different */
 	case MADIFX:
-		hdspm->texts_autosync = texts_madifx_clock_source;
-		hdspm->texts_autosync_items = 6;
 		hdspm->texts_clocksource = texts_madifx_clock_source;
 		hdspm->texts_clocksource_items = 6;
 		break;
