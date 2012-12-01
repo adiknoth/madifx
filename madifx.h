@@ -33,28 +33,34 @@ enum madifx_io_type {
 };
 
 enum madifx_speed {
-	ss,
-	ds,
-	qs
+	ss = 0,
+	ds = 1,
+	qs = 2
 };
 
 /* -------------------- IOCTL Peak/RMS Meters -------------------- */
 
-struct madifx_peak_rms {
-	uint32_t input_peaks[HDSPM_MAX_CHANNELS];
-	uint32_t playback_peaks[HDSPM_MAX_CHANNELS];
-	uint32_t output_peaks[HDSPM_MAX_CHANNELS];
+struct madifx_level_buffer {
+	uint32_t rms_out_pre[2 * 256];
+	uint32_t peak_out_pre[256];
 
-	uint64_t input_rms[HDSPM_MAX_CHANNELS];
-	uint64_t playback_rms[HDSPM_MAX_CHANNELS];
-	uint64_t output_rms[HDSPM_MAX_CHANNELS];
+	uint32_t rms_in[2 * 256];
+	uint32_t peak_in[256];
+
+	uint32_t rms_play[2 * 256];
+	uint32_t peak_play[256];
+
+	uint32_t rms_out[2 * 256];
+	uint32_t peak_out[256];
+
+	uint32_t rms_in_pre[2 * 256];
+	uint32_t peak_in_pre[256];
 
 	uint8_t speed; /* enum {ss, ds, qs} */
-	int status2;
 };
 
-#define SNDRV_HDSPM_IOCTL_GET_PEAK_RMS \
-	_IOR('H', 0x42, struct madifx_peak_rms)
+#define SNDRV_MADIFX_GET_LEVELBUFFER \
+	_IOR('H', 0x42, struct madifx_level_buffer)
 
 /* ------------ CONFIG block IOCTL ---------------------- */
 
@@ -205,6 +211,8 @@ struct madifx_version {
 #define HDSPM_MIXER_CHANNELS HDSPM_MAX_CHANNELS
 #define MADIFX_LIST_LENGTH 4096
 #define MADIFX_NUM_OUTPUT_GAINS 198 
+#define MADIFX_NUM_LEVEL_PAGES 5
+#define MADIFX_LEVEL_BUFFER_SIZE (MADIFX_NUM_LEVEL_PAGES * 4096)
 
 struct madifx_channelfader {
 	unsigned int in[HDSPM_MIXER_CHANNELS];

@@ -70,8 +70,11 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 /* --- Write registers. ---
   These are defined as byte-offsets from the iobase value.  */
 
+#define MADIFX_CONTROL_REG	(0*4)
+#define MADIFX_IRQ_ACK		(3*4)
 #define MADIFX_FREQ_REG		(1*4)
 #define MADIFX_SETTINGS_REG	(2*4)
+#define MADIFX_START_LEVEL	(6*4)
 #define MADIFX_midi_out0_data   (8*4)
 #define MADIFX_midi_out1_data   (9*4)
 #define MADIFX_midi_out2_data	(10*4)
@@ -83,8 +86,6 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define MADIFX_SAMPLE_FRAMES_PER_BUFFER		8192
 
 
-#define MADIFX_CONTROL_REG	     0
-#define MADIFX_IRQ_ACK           (3*4)
 #define HDSPM_control2Reg	     256  /* not in specs ???????? */
 #define HDSPM_midiDataOut0	     352  /* just believe in old code */
 #define HDSPM_midiDataOut1	     356
@@ -98,6 +99,8 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 
 /* page table size in entries, multiply by 4 to get byte offset */
 #define MADIFX_MAX_PAGE_TABLE_SIZE	4096
+#define MADIFX_LPTI_HMFX    (MADIFX_MAX_PAGE_TABLE_SIZE/2+25*32768*8/4096)
+#define MADIFX_LPTI_MFXT    (MADIFX_MAX_PAGE_TABLE_SIZE/2+26*32768*8/4096)
 
 #define HDSPM_MADI_mixerBase    32768	/* 32768-65535 for 2x64x64 Fader */
 
@@ -277,6 +280,18 @@ enum {
 #define MADIFX_word_freq1	0x20000
 #define MADIFX_word_freq2	0x40000
 #define MADIFX_word_freq3	0x80000
+
+/* Index to DMA level buffer in uint32_t units */
+#define MADIFX_RD_RMS_IN      	(0*1)
+#define MADIFX_RD_PEAK_IN     	(512*1)
+#define MADIFX_RD_RMS_PLAY    	(1024*1)
+#define MADIFX_RD_PEAK_PLAY	(1536*1)
+#define MADIFX_RD_RMS_OUT     	(2048*1)
+#define MADIFX_RD_PEAK_OUT    	(2560*1)
+#define MADIFX_RD_RMS_IN_PRE	(3072*1)
+#define MADIFX_RD_PEAK_IN_PRE	(3584*1)
+#define MADIFX_RD_RMS_OUT_PRE	(4096*1)
+#define MADIFX_RD_PEAK_OUT_PRE	(4608*1)
 
 
 /* the meters are regular i/o-mapped registers, but offset
@@ -736,6 +751,7 @@ struct hdspm {
 
 	unsigned char *playback_buffer;	/* suitably aligned address */
 	unsigned char *capture_buffer;	/* suitably aligned address */
+	u32 *level_buffer;	/* suitably aligned address */
 
 	pid_t capture_pid;	/* process id which uses capture */
 	pid_t playback_pid;	/* process id which uses capture */
@@ -767,6 +783,7 @@ struct hdspm {
 	struct madifx_mixer *mixer;
 	struct madifx_newmixer *newmixer;
 	dma_addr_t *dmaPageTable;
+	struct snd_dma_buffer dmaLevelBuffer;
 
 	struct madifx_tco *tco;  /* NULL if no TCO detected */
 
@@ -782,7 +799,8 @@ struct hdspm {
 
 	int speedmode;
 
-	struct madifx_peak_rms peak_rms;
+	struct madifx_level_buffer peak_rms;
+
 };
 
 
@@ -4648,7 +4666,7 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 	struct madifx_config info;
 	struct madifx_status status;
 	struct madifx_version madifx_version;
-	struct madifx_peak_rms *levels;
+	struct madifx_level_buffer *levels;
 	struct madifx_ltc ltc;
 	unsigned int statusregister;
 	long unsigned int s;
@@ -4656,52 +4674,72 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 
 	switch (cmd) {
 
-	case SNDRV_HDSPM_IOCTL_GET_PEAK_RMS:
-		levels = &hdspm->peak_rms;
-		for (i = 0; i < HDSPM_MAX_CHANNELS; i++) {
-			levels->input_peaks[i] =
-				readl(hdspm->iobase +
-						HDSPM_MADI_INPUT_PEAK + i*4);
-			levels->playback_peaks[i] =
-				readl(hdspm->iobase +
-						HDSPM_MADI_PLAYBACK_PEAK + i*4);
-			levels->output_peaks[i] =
-				readl(hdspm->iobase +
-						HDSPM_MADI_OUTPUT_PEAK + i*4);
+	case SNDRV_MADIFX_GET_LEVELBUFFER:
+		{
+			int row;
 
-			levels->input_rms[i] =
-				((uint64_t) readl(hdspm->iobase +
-					HDSPM_MADI_INPUT_RMS_H + i*4) << 32) |
-				(uint64_t) readl(hdspm->iobase +
-						HDSPM_MADI_INPUT_RMS_L + i*4);
-			levels->playback_rms[i] =
-				((uint64_t)readl(hdspm->iobase +
-					HDSPM_MADI_PLAYBACK_RMS_H+i*4) << 32) |
-				(uint64_t)readl(hdspm->iobase +
-					HDSPM_MADI_PLAYBACK_RMS_L + i*4);
-			levels->output_rms[i] =
-				((uint64_t)readl(hdspm->iobase +
-					HDSPM_MADI_OUTPUT_RMS_H + i*4) << 32) |
-				(uint64_t)readl(hdspm->iobase +
-						HDSPM_MADI_OUTPUT_RMS_L + i*4);
+			levels = &(hdspm->peak_rms);
+			for (row = 1; row <= 5 ; row++) {
+				int rms_index, peak_index;
+				u32 *target_rms, *target_peak;
+
+				switch (row) {
+				case 1: 
+					rms_index = MADIFX_RD_RMS_IN;
+					peak_index = MADIFX_RD_PEAK_IN;
+					target_rms = levels->rms_in;
+					target_peak = levels->peak_in;
+					break;
+				case 2:
+					rms_index = MADIFX_RD_RMS_PLAY;
+					peak_index = MADIFX_RD_PEAK_PLAY;
+					target_rms = levels->rms_play;
+					target_peak = levels->peak_play;
+					break;
+				case 3: 
+					rms_index = MADIFX_RD_RMS_OUT;
+					peak_index = MADIFX_RD_PEAK_OUT;
+					target_rms = levels->rms_out;
+					target_peak = levels->peak_out;
+					break;
+				case 4:
+					rms_index = MADIFX_RD_RMS_IN_PRE;
+					peak_index = MADIFX_RD_PEAK_IN_PRE;
+					target_rms = levels->rms_in_pre;
+					target_peak = levels->peak_in_pre;
+					break;
+				default:
+					rms_index = MADIFX_RD_RMS_OUT_PRE;
+					peak_index = MADIFX_RD_PEAK_OUT_PRE;
+					target_rms = levels->rms_out_pre;
+					target_peak = levels->peak_out_pre;
+					break;
+				}	
+
+				for (i = 0; i < 2 * 256; i++) {
+					*(target_rms + i) = hdspm->level_buffer[rms_index + i];
+				}
+
+				for (i = 0; i < 256; i++) {
+					*(target_peak + i) = hdspm->level_buffer[peak_index + i];
+				}
+			}
+
 		}
 
-		if (hdspm->system_sample_rate > 96000) {
-			levels->speed = qs;
-		} else if (hdspm->system_sample_rate > 48000) {
-			levels->speed = ds;
-		} else {
-			levels->speed = ss;
-		}
-		levels->status2 = madifx_read(hdspm, HDSPM_statusRegister2);
 
-		s = copy_to_user(argp, levels, sizeof(struct madifx_peak_rms));
+		levels->speed = hdspm->speedmode;
+
+		s = copy_to_user(argp, levels, sizeof(struct madifx_level_buffer));
 		if (0 != s) {
 			/* snd_printk(KERN_ERR "copy_to_user(.., .., %lu): %lu
 			 [Levels]\n", sizeof(struct madifx_peak_rms), s);
 			 */
 			return -EFAULT;
 		}
+
+		madifx_write(hdspm, MADIFX_START_LEVEL, 0);
+
 		break;
 
 	case SNDRV_HDSPM_IOCTL_GET_LTC:
@@ -4894,8 +4932,11 @@ static int __devinit snd_madifx_create_hwdep(struct snd_card *card,
 static int __devinit snd_madifx_preallocate_memory(struct hdspm *hdspm)
 {
 	int err;
+	int i;
+	int lpti; /* level page table index */
 	struct snd_pcm *pcm;
 	size_t wanted;
+	dma_addr_t levelPageTable[MADIFX_NUM_LEVEL_PAGES];
 
 	pcm = hdspm->pcm;
 
@@ -4924,6 +4965,35 @@ static int __devinit snd_madifx_preallocate_memory(struct hdspm *hdspm)
 	} else
 		snd_printdd(" Preallocated %zd Bytes\n", wanted);
 
+	/* allocate level buffer */
+	err = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV_SG,
+			snd_dma_pci_data(hdspm->pci),
+			MADIFX_LEVEL_BUFFER_SIZE, &hdspm->dmaLevelBuffer);
+	if (err < 0) {
+		snd_printk(KERN_ERR "MADIFX: "
+				"Unable to allocate DMA level buffer\n");
+		return -ENOMEM;
+	}
+
+	/* Fill level page table */
+	for (i = 0; i < MADIFX_NUM_LEVEL_PAGES; i++) {
+		levelPageTable[i] = snd_sgbuf_get_addr(&(hdspm->dmaLevelBuffer),
+				i * MADIFX_HARDWARE_PAGE_SIZE);
+
+	}
+
+	/* Write level page table to device */
+	lpti = (MADIFX == hdspm->io_type) ? MADIFX_LPTI_HMFX :
+		MADIFX_LPTI_MFXT;
+	
+	for (i = 0; i < MADIFX_NUM_LEVEL_PAGES; i++) {
+		madifx_write(hdspm, MADIFX_PAGE_ADDRESS_LIST + (4 * (lpti + i)),
+				levelPageTable[i]);
+	}						
+
+	hdspm->level_buffer = snd_sgbuf_get_ptr(&(hdspm->dmaLevelBuffer), 0);
+
+	memset(hdspm->level_buffer, 0, MADIFX_LEVEL_BUFFER_SIZE);
 
 
 	return 0;
@@ -5252,6 +5322,7 @@ static int snd_madifx_free(struct hdspm * hdspm)
 		      MADIFX_IEN2 | MADIFX_IEN3);
 		madifx_write(hdspm, MADIFX_CONTROL_REG,
 			    hdspm->control_register);
+		madifx_write(hdspm, MADIFX_START_LEVEL, 0);
 	}
 
 	if (hdspm->irq >= 0)
@@ -5259,6 +5330,7 @@ static int snd_madifx_free(struct hdspm * hdspm)
 
 	kfree(hdspm->mixer);
 	kfree(hdspm->dmaPageTable);
+	snd_dma_free_pages(&(hdspm->dmaLevelBuffer));
 
 	if (hdspm->iobase)
 		iounmap(hdspm->iobase);
@@ -5334,6 +5406,8 @@ static int __devinit snd_madifx_probe(struct pci_dev *pci,
 	}
 
 	pci_set_drvdata(pci, card);
+
+	madifx_write(hdspm, MADIFX_START_LEVEL, 1);
 
 	dev++;
 	return 0;
