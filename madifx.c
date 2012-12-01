@@ -122,39 +122,6 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define HDSPM_RD_STATUS_2 128
 #define HDSPM_RD_STATUS_3 192
 
-#define HDSPM_RD_TCO           256
-#define HDSPM_WR_TCO           128
-
-#define HDSPM_TCO1_TCO_lock			0x00000001
-#define HDSPM_TCO1_WCK_Input_Range_LSB		0x00000002
-#define HDSPM_TCO1_WCK_Input_Range_MSB		0x00000004
-#define HDSPM_TCO1_LTC_Input_valid		0x00000008
-#define HDSPM_TCO1_WCK_Input_valid		0x00000010
-#define HDSPM_TCO1_Video_Input_Format_NTSC	0x00000020
-#define HDSPM_TCO1_Video_Input_Format_PAL	0x00000040
-
-#define HDSPM_TCO1_set_TC			0x00000100
-#define HDSPM_TCO1_set_drop_frame_flag		0x00000200
-#define HDSPM_TCO1_LTC_Format_LSB		0x00000400
-#define HDSPM_TCO1_LTC_Format_MSB		0x00000800
-
-#define HDSPM_TCO2_TC_run			0x00010000
-#define HDSPM_TCO2_WCK_IO_ratio_LSB		0x00020000
-#define HDSPM_TCO2_WCK_IO_ratio_MSB		0x00040000
-#define HDSPM_TCO2_set_num_drop_frames_LSB	0x00080000
-#define HDSPM_TCO2_set_num_drop_frames_MSB	0x00100000
-#define HDSPM_TCO2_set_jam_sync			0x00200000
-#define HDSPM_TCO2_set_flywheel			0x00400000
-
-#define HDSPM_TCO2_set_01_4			0x01000000
-#define HDSPM_TCO2_set_pull_down		0x02000000
-#define HDSPM_TCO2_set_pull_up			0x04000000
-#define HDSPM_TCO2_set_freq			0x08000000
-#define HDSPM_TCO2_set_term_75R			0x10000000
-#define HDSPM_TCO2_set_input_LSB		0x20000000
-#define HDSPM_TCO2_set_input_MSB		0x40000000
-#define HDSPM_TCO2_set_freq_from_app		0x80000000
-
 
 #define MADIFX_RD_STATUS		(0*4)
 #define MADIFX_RD_INP_STATUS	(1*4)
@@ -389,7 +356,6 @@ enum {
 
 #define HDSPM_SYNC_FROM_WORD    0	/* Preferred sync reference */
 #define HDSPM_SYNC_FROM_MADI    1	/* choices - used by "pref_sync_ref" */
-#define HDSPM_SYNC_FROM_TCO     2
 #define HDSPM_SYNC_FROM_SYNC_IN 3
 
 #define HDSPM_Frequency32KHz    HDSPM_Frequency0
@@ -413,7 +379,6 @@ enum {
 /* AutoSync References - used by "autosync_ref" control switch */
 #define HDSPM_AUTOSYNC_FROM_WORD      0
 #define HDSPM_AUTOSYNC_FROM_MADI      1
-#define HDSPM_AUTOSYNC_FROM_TCO       2
 #define HDSPM_AUTOSYNC_FROM_SYNC_IN   3
 #define HDSPM_AUTOSYNC_FROM_NONE      4
 
@@ -456,8 +421,6 @@ enum {
 #define HDSPM_madiLock           (1<<3)	/* MADI Locked =1, no=0 */
 #define HDSPM_madiSync          (1<<18) /* MADI is in sync */
 
-#define HDSPM_tcoLock    0x00000020 /* Optional TCO locked status FOR HDSPe MADI! */
-#define HDSPM_tcoSync    0x10000000 /* Optional TCO sync status */
 
 #define HDSPM_syncInLock 0x00010000 /* Sync In lock status FOR HDSPe MADI! */
 #define HDSPM_syncInSync 0x00020000 /* Sync In sync status FOR HDSPe MADI! */
@@ -477,12 +440,7 @@ enum {
 #define HDSPM_BufferID          (1<<26)	/* (Double)Buffer ID toggles with
 					 * Interrupt
 					 */
-#define HDSPM_tco_detect         0x08000000
-#define HDSPM_tco_lock	         0x20000000
 
-#define HDSPM_s2_tco_detect      0x00000040
-#define HDSPM_s2_AEBO_D          0x00000080
-#define HDSPM_s2_AEBI_D          0x00000100
 
 
 /* --- status bit helpers */
@@ -540,7 +498,6 @@ enum {
 				    HDSPM_SelSyncRef2)
 #define HDSPM_SelSyncRef_WORD      0
 #define HDSPM_SelSyncRef_MADI      (HDSPM_SelSyncRef0)
-#define HDSPM_SelSyncRef_TCO       (HDSPM_SelSyncRef1)
 #define HDSPM_SelSyncRef_SyncIn    (HDSPM_SelSyncRef0|HDSPM_SelSyncRef1)
 #define HDSPM_SelSyncRef_NVALID    (HDSPM_SelSyncRef0|HDSPM_SelSyncRef1|\
 				    HDSPM_SelSyncRef2)
@@ -659,8 +616,6 @@ enum {
 /* names for speed modes */
 static char *madifx_speed_names[] = { "single", "double", "quad" };
 
-static char *texts_autosync_madi_tco[] = { "Word Clock",
-					   "MADI", "TCO", "Sync In" };
 static char *texts_madifx_clock_source[] = {
 	"Internal",
 	"AES In",
@@ -703,14 +658,6 @@ struct madifx_midi {
 	int irq;
 };
 
-struct madifx_tco {
-	int input;
-	int framerate;
-	int wordclock;
-	int samplerate;
-	int pull;
-	int term; /* 0 = off, 1 = on */
-};
 
 struct hdspm {
         spinlock_t lock;
@@ -784,8 +731,6 @@ struct hdspm {
 	struct madifx_newmixer *newmixer;
 	dma_addr_t *dmaPageTable;
 	struct snd_dma_buffer dmaLevelBuffer;
-
-	struct madifx_tco *tco;  /* NULL if no TCO detected */
 
 	/* FIXME: drop texts_autosync later */
 	char **texts_autosync;
@@ -2307,8 +2252,6 @@ static int madifx_autosync_ref(struct hdspm *hdspm)
 			return HDSPM_AUTOSYNC_FROM_WORD;
 		case HDSPM_SelSyncRef_MADI:
 			return HDSPM_AUTOSYNC_FROM_MADI;
-		case HDSPM_SelSyncRef_TCO:
-			return HDSPM_AUTOSYNC_FROM_TCO;
 		case HDSPM_SelSyncRef_SyncIn:
 			return HDSPM_AUTOSYNC_FROM_SYNC_IN;
 		case HDSPM_SelSyncRef_NVALID:
@@ -2681,44 +2624,6 @@ static int madifx_sync_in_sync_check(struct hdspm *hdspm)
 }
 
 
-static int madifx_tco_sync_check(struct hdspm *hdspm)
-{
-	int status;
-
-	if (hdspm->tco) {
-		switch (hdspm->io_type) {
-		case MADI:
-		case AES32:
-			status = madifx_read(hdspm, HDSPM_statusRegister);
-			if (status & HDSPM_tcoLock) {
-				if (status & HDSPM_tcoSync)
-					return 2;
-				else
-					return 1;
-			}
-			return 0;
-
-			break;
-
-		case RayDAT:
-		case AIO:
-			status = madifx_read(hdspm, HDSPM_RD_STATUS_1);
-
-			if (status & 0x8000000)
-				return 2; /* Sync */
-			if (status & 0x4000000)
-				return 1; /* Lock */
-			return 0; /* No signal */
-			break;
-
-		default:
-			break;
-		}
-	}
-
-	return 3; /* N/A */
-}
-
 
 static int snd_madifx_get_sync_check(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
@@ -2736,430 +2641,6 @@ static int snd_madifx_get_sync_check(struct snd_kcontrol *kcontrol,
 		val = 3;
 
 	ucontrol->value.enumerated.item[0] = val;
-	return 0;
-}
-
-
-
-/**
- * TCO controls
- **/
-static void madifx_tco_write(struct hdspm *hdspm)
-{
-	unsigned int tc[4] = { 0, 0, 0, 0};
-
-	switch (hdspm->tco->input) {
-	case 0:
-		tc[2] |= HDSPM_TCO2_set_input_MSB;
-		break;
-	case 1:
-		tc[2] |= HDSPM_TCO2_set_input_LSB;
-		break;
-	default:
-		break;
-	}
-
-	switch (hdspm->tco->framerate) {
-	case 1:
-		tc[1] |= HDSPM_TCO1_LTC_Format_LSB;
-		break;
-	case 2:
-		tc[1] |= HDSPM_TCO1_LTC_Format_MSB;
-		break;
-	case 3:
-		tc[1] |= HDSPM_TCO1_LTC_Format_MSB +
-			HDSPM_TCO1_set_drop_frame_flag;
-		break;
-	case 4:
-		tc[1] |= HDSPM_TCO1_LTC_Format_LSB +
-			HDSPM_TCO1_LTC_Format_MSB;
-		break;
-	case 5:
-		tc[1] |= HDSPM_TCO1_LTC_Format_LSB +
-			HDSPM_TCO1_LTC_Format_MSB +
-			HDSPM_TCO1_set_drop_frame_flag;
-		break;
-	default:
-		break;
-	}
-
-	switch (hdspm->tco->wordclock) {
-	case 1:
-		tc[2] |= HDSPM_TCO2_WCK_IO_ratio_LSB;
-		break;
-	case 2:
-		tc[2] |= HDSPM_TCO2_WCK_IO_ratio_MSB;
-		break;
-	default:
-		break;
-	}
-
-	switch (hdspm->tco->samplerate) {
-	case 1:
-		tc[2] |= HDSPM_TCO2_set_freq;
-		break;
-	case 2:
-		tc[2] |= HDSPM_TCO2_set_freq_from_app;
-		break;
-	default:
-		break;
-	}
-
-	switch (hdspm->tco->pull) {
-	case 1:
-		tc[2] |= HDSPM_TCO2_set_pull_up;
-		break;
-	case 2:
-		tc[2] |= HDSPM_TCO2_set_pull_down;
-		break;
-	case 3:
-		tc[2] |= HDSPM_TCO2_set_pull_up + HDSPM_TCO2_set_01_4;
-		break;
-	case 4:
-		tc[2] |= HDSPM_TCO2_set_pull_down + HDSPM_TCO2_set_01_4;
-		break;
-	default:
-		break;
-	}
-
-	if (1 == hdspm->tco->term) {
-		tc[2] |= HDSPM_TCO2_set_term_75R;
-	}
-
-	madifx_write(hdspm, HDSPM_WR_TCO, tc[0]);
-	madifx_write(hdspm, HDSPM_WR_TCO+4, tc[1]);
-	madifx_write(hdspm, HDSPM_WR_TCO+8, tc[2]);
-	madifx_write(hdspm, HDSPM_WR_TCO+12, tc[3]);
-}
-
-
-#define HDSPM_TCO_SAMPLE_RATE(xname, xindex) \
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
-	.name = xname, \
-	.index = xindex, \
-	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE |\
-		SNDRV_CTL_ELEM_ACCESS_VOLATILE, \
-	.info = snd_madifx_info_tco_sample_rate, \
-	.get = snd_madifx_get_tco_sample_rate, \
-	.put = snd_madifx_put_tco_sample_rate \
-}
-
-static int snd_madifx_info_tco_sample_rate(struct snd_kcontrol *kcontrol,
-					  struct snd_ctl_elem_info *uinfo)
-{
-	static char *texts[] = { "44.1 kHz", "48 kHz" };
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
-	uinfo->count = 1;
-	uinfo->value.enumerated.items = 2;
-
-	if (uinfo->value.enumerated.item >= uinfo->value.enumerated.items)
-		uinfo->value.enumerated.item =
-			uinfo->value.enumerated.items - 1;
-
-	strcpy(uinfo->value.enumerated.name,
-			texts[uinfo->value.enumerated.item]);
-
-	return 0;
-}
-
-static int snd_madifx_get_tco_sample_rate(struct snd_kcontrol *kcontrol,
-				      struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-
-	ucontrol->value.enumerated.item[0] = hdspm->tco->samplerate;
-
-	return 0;
-}
-
-static int snd_madifx_put_tco_sample_rate(struct snd_kcontrol *kcontrol,
-					 struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-
-	if (hdspm->tco->samplerate != ucontrol->value.enumerated.item[0]) {
-		hdspm->tco->samplerate = ucontrol->value.enumerated.item[0];
-
-		madifx_tco_write(hdspm);
-
-		return 1;
-	}
-
-	return 0;
-}
-
-
-#define HDSPM_TCO_PULL(xname, xindex) \
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
-	.name = xname, \
-	.index = xindex, \
-	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE |\
-		SNDRV_CTL_ELEM_ACCESS_VOLATILE, \
-	.info = snd_madifx_info_tco_pull, \
-	.get = snd_madifx_get_tco_pull, \
-	.put = snd_madifx_put_tco_pull \
-}
-
-static int snd_madifx_info_tco_pull(struct snd_kcontrol *kcontrol,
-				   struct snd_ctl_elem_info *uinfo)
-{
-	static char *texts[] = { "0", "+ 0.1 %", "- 0.1 %", "+ 4 %", "- 4 %" };
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
-	uinfo->count = 1;
-	uinfo->value.enumerated.items = 5;
-
-	if (uinfo->value.enumerated.item >= uinfo->value.enumerated.items)
-		uinfo->value.enumerated.item =
-			uinfo->value.enumerated.items - 1;
-
-	strcpy(uinfo->value.enumerated.name,
-			texts[uinfo->value.enumerated.item]);
-
-	return 0;
-}
-
-static int snd_madifx_get_tco_pull(struct snd_kcontrol *kcontrol,
-				  struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-
-	ucontrol->value.enumerated.item[0] = hdspm->tco->pull;
-
-	return 0;
-}
-
-static int snd_madifx_put_tco_pull(struct snd_kcontrol *kcontrol,
-				  struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-
-	if (hdspm->tco->pull != ucontrol->value.enumerated.item[0]) {
-		hdspm->tco->pull = ucontrol->value.enumerated.item[0];
-
-		madifx_tco_write(hdspm);
-
-		return 1;
-	}
-
-	return 0;
-}
-
-#define HDSPM_TCO_WCK_CONVERSION(xname, xindex) \
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
-	.name = xname, \
-	.index = xindex, \
-	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE |\
-			SNDRV_CTL_ELEM_ACCESS_VOLATILE, \
-	.info = snd_madifx_info_tco_wck_conversion, \
-	.get = snd_madifx_get_tco_wck_conversion, \
-	.put = snd_madifx_put_tco_wck_conversion \
-}
-
-static int snd_madifx_info_tco_wck_conversion(struct snd_kcontrol *kcontrol,
-					     struct snd_ctl_elem_info *uinfo)
-{
-	static char *texts[] = { "1:1", "44.1 -> 48", "48 -> 44.1" };
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
-	uinfo->count = 1;
-	uinfo->value.enumerated.items = 3;
-
-	if (uinfo->value.enumerated.item >= uinfo->value.enumerated.items)
-		uinfo->value.enumerated.item =
-			uinfo->value.enumerated.items - 1;
-
-	strcpy(uinfo->value.enumerated.name,
-			texts[uinfo->value.enumerated.item]);
-
-	return 0;
-}
-
-static int snd_madifx_get_tco_wck_conversion(struct snd_kcontrol *kcontrol,
-					    struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-
-	ucontrol->value.enumerated.item[0] = hdspm->tco->wordclock;
-
-	return 0;
-}
-
-static int snd_madifx_put_tco_wck_conversion(struct snd_kcontrol *kcontrol,
-					    struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-
-	if (hdspm->tco->wordclock != ucontrol->value.enumerated.item[0]) {
-		hdspm->tco->wordclock = ucontrol->value.enumerated.item[0];
-
-		madifx_tco_write(hdspm);
-
-		return 1;
-	}
-
-	return 0;
-}
-
-
-#define HDSPM_TCO_FRAME_RATE(xname, xindex) \
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
-	.name = xname, \
-	.index = xindex, \
-	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE |\
-			SNDRV_CTL_ELEM_ACCESS_VOLATILE, \
-	.info = snd_madifx_info_tco_frame_rate, \
-	.get = snd_madifx_get_tco_frame_rate, \
-	.put = snd_madifx_put_tco_frame_rate \
-}
-
-static int snd_madifx_info_tco_frame_rate(struct snd_kcontrol *kcontrol,
-					  struct snd_ctl_elem_info *uinfo)
-{
-	static char *texts[] = { "24 fps", "25 fps", "29.97fps",
-		"29.97 dfps", "30 fps", "30 dfps" };
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
-	uinfo->count = 1;
-	uinfo->value.enumerated.items = 6;
-
-	if (uinfo->value.enumerated.item >= uinfo->value.enumerated.items)
-		uinfo->value.enumerated.item =
-			uinfo->value.enumerated.items - 1;
-
-	strcpy(uinfo->value.enumerated.name,
-			texts[uinfo->value.enumerated.item]);
-
-	return 0;
-}
-
-static int snd_madifx_get_tco_frame_rate(struct snd_kcontrol *kcontrol,
-					struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-
-	ucontrol->value.enumerated.item[0] = hdspm->tco->framerate;
-
-	return 0;
-}
-
-static int snd_madifx_put_tco_frame_rate(struct snd_kcontrol *kcontrol,
-					struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-
-	if (hdspm->tco->framerate != ucontrol->value.enumerated.item[0]) {
-		hdspm->tco->framerate = ucontrol->value.enumerated.item[0];
-
-		madifx_tco_write(hdspm);
-
-		return 1;
-	}
-
-	return 0;
-}
-
-
-#define HDSPM_TCO_SYNC_SOURCE(xname, xindex) \
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
-	.name = xname, \
-	.index = xindex, \
-	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE |\
-			SNDRV_CTL_ELEM_ACCESS_VOLATILE, \
-	.info = snd_madifx_info_tco_sync_source, \
-	.get = snd_madifx_get_tco_sync_source, \
-	.put = snd_madifx_put_tco_sync_source \
-}
-
-static int snd_madifx_info_tco_sync_source(struct snd_kcontrol *kcontrol,
-					  struct snd_ctl_elem_info *uinfo)
-{
-	static char *texts[] = { "LTC", "Video", "WCK" };
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
-	uinfo->count = 1;
-	uinfo->value.enumerated.items = 3;
-
-	if (uinfo->value.enumerated.item >= uinfo->value.enumerated.items)
-		uinfo->value.enumerated.item =
-			uinfo->value.enumerated.items - 1;
-
-	strcpy(uinfo->value.enumerated.name,
-			texts[uinfo->value.enumerated.item]);
-
-	return 0;
-}
-
-static int snd_madifx_get_tco_sync_source(struct snd_kcontrol *kcontrol,
-					 struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-
-	ucontrol->value.enumerated.item[0] = hdspm->tco->input;
-
-	return 0;
-}
-
-static int snd_madifx_put_tco_sync_source(struct snd_kcontrol *kcontrol,
-					 struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-
-	if (hdspm->tco->input != ucontrol->value.enumerated.item[0]) {
-		hdspm->tco->input = ucontrol->value.enumerated.item[0];
-
-		madifx_tco_write(hdspm);
-
-		return 1;
-	}
-
-	return 0;
-}
-
-
-#define HDSPM_TCO_WORD_TERM(xname, xindex) \
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
-	.name = xname, \
-	.index = xindex, \
-	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE |\
-			SNDRV_CTL_ELEM_ACCESS_VOLATILE, \
-	.info = snd_madifx_info_tco_word_term, \
-	.get = snd_madifx_get_tco_word_term, \
-	.put = snd_madifx_put_tco_word_term \
-}
-
-static int snd_madifx_info_tco_word_term(struct snd_kcontrol *kcontrol,
-					struct snd_ctl_elem_info *uinfo)
-{
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
-	uinfo->count = 1;
-	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = 1;
-
-	return 0;
-}
-
-
-static int snd_madifx_get_tco_word_term(struct snd_kcontrol *kcontrol,
-				       struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-
-	ucontrol->value.enumerated.item[0] = hdspm->tco->term;
-
-	return 0;
-}
-
-
-static int snd_madifx_put_tco_word_term(struct snd_kcontrol *kcontrol,
-				       struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-
-	if (hdspm->tco->term != ucontrol->value.enumerated.item[0]) {
-		hdspm->tco->term = ucontrol->value.enumerated.item[0];
-
-		madifx_tco_write(hdspm);
-
-		return 1;
-	}
-
 	return 0;
 }
 
@@ -3193,17 +2674,6 @@ static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 	MADIFX_TOGGLE_SETTING("Redundancy mode", MADIFX_redundancy_mode),
 	MADIFX_TOGGLE_SETTING("Mirror MADI out", MADIFX_mirror_madi_out),
 	MADIFX_CLOCK_SELECT("Clock Selection", 0)
-};
-
-
-/* Control elements for the optional TCO module */
-static struct snd_kcontrol_new snd_madifx_controls_tco[] = {
-	HDSPM_TCO_SAMPLE_RATE("TCO Sample Rate", 0),
-	HDSPM_TCO_PULL("TCO Pull", 0),
-	HDSPM_TCO_WCK_CONVERSION("TCO WCK Conversion", 0),
-	HDSPM_TCO_FRAME_RATE("TCO Frame Rate", 0),
-	HDSPM_TCO_SYNC_SOURCE("TCO Sync Source", 0),
-	HDSPM_TCO_WORD_TERM("TCO Word Term", 0)
 };
 
 
@@ -3283,18 +2753,6 @@ static int snd_madifx_create_controls(struct snd_card *card,
 #endif
 
 
-	if (hdspm->tco) {
-		/* add tco control elements */
-		list = snd_madifx_controls_tco;
-		limit = ARRAY_SIZE(snd_madifx_controls_tco);
-		for (idx = 0; idx < limit; idx++) {
-			err = snd_ctl_add(card,
-					snd_ctl_new1(&list[idx], hdspm));
-			if (err < 0)
-				return err;
-		}
-	}
-
 	return 0;
 }
 
@@ -3363,48 +2821,6 @@ snd_madifx_proc_read_madifx(struct snd_info_entry * entry,
 		"input=0x%x inp_freq=0x%x\n",
 		hdspm->control_register, hdspm->settings_register,
 		status, inp_status, freq);
-#if 0
-	if (status & HDSPM_tco_detect) {
-		snd_iprintf(buffer, "TCO module detected.\n");
-		a = madifx_read(hdspm, HDSPM_RD_TCO+4);
-		if (a & HDSPM_TCO1_LTC_Input_valid) {
-			snd_iprintf(buffer, "  LTC valid, ");
-			switch (a & (HDSPM_TCO1_LTC_Format_LSB |
-						HDSPM_TCO1_LTC_Format_MSB)) {
-			case 0:
-				snd_iprintf(buffer, "24 fps, ");
-				break;
-			case HDSPM_TCO1_LTC_Format_LSB:
-				snd_iprintf(buffer, "25 fps, ");
-				break;
-			case HDSPM_TCO1_LTC_Format_MSB:
-				snd_iprintf(buffer, "29.97 fps, ");
-				break;
-			default:
-				snd_iprintf(buffer, "30 fps, ");
-				break;
-			}
-			if (a & HDSPM_TCO1_set_drop_frame_flag) {
-				snd_iprintf(buffer, "drop frame\n");
-			} else {
-				snd_iprintf(buffer, "full frame\n");
-			}
-		} else {
-			snd_iprintf(buffer, "  no LTC\n");
-		}
-		if (a & HDSPM_TCO1_Video_Input_Format_NTSC) {
-			snd_iprintf(buffer, "  Video: NTSC\n");
-		} else if (a & HDSPM_TCO1_Video_Input_Format_PAL) {
-			snd_iprintf(buffer, "  Video: PAL\n");
-		} else {
-			snd_iprintf(buffer, "  No video\n");
-		}
-		if (a & HDSPM_TCO1_TCO_lock) {
-			snd_iprintf(buffer, "  Sync: lock\n");
-		} else {
-			snd_iprintf(buffer, "  Sync: no lock\n");
-		}
-#endif
 
 		switch (hdspm->io_type) {
 		case MADIFX:
@@ -3425,31 +2841,6 @@ snd_madifx_proc_read_madifx(struct snd_info_entry * entry,
 		snd_iprintf(buffer, "  Frequency: %u Hz\n",
 				(unsigned int) rate);
 
-#if 0
-		ltc = madifx_read(hdspm, HDSPM_RD_TCO);
-		frames = ltc & 0xF;
-		ltc >>= 4;
-		frames += (ltc & 0x3) * 10;
-		ltc >>= 4;
-		seconds = ltc & 0xF;
-		ltc >>= 4;
-		seconds += (ltc & 0x7) * 10;
-		ltc >>= 4;
-		minutes = ltc & 0xF;
-		ltc >>= 4;
-		minutes += (ltc & 0x7) * 10;
-		ltc >>= 4;
-		hours = ltc & 0xF;
-		ltc >>= 4;
-		hours += (ltc & 0x3) * 10;
-		snd_iprintf(buffer,
-			"  LTC In: %02d:%02d:%02d:%02d\n",
-			hours, minutes, seconds, frames);
-
-	} else {
-		snd_iprintf(buffer, "No TCO module detected.\n");
-	}
-#endif
 
 	snd_iprintf(buffer, "--- Settings ---\n");
 
@@ -3542,67 +2933,6 @@ snd_madifx_proc_read_madifx(struct snd_info_entry * entry,
 	snd_iprintf(buffer, "\n");
 }
 
-
-#if 0
-static void
-snd_madifx_proc_read_raydat(struct snd_info_entry *entry,
-			 struct snd_info_buffer *buffer)
-{
-	struct hdspm *hdspm = entry->private_data;
-	unsigned int status1, status2, status3, control, i;
-	unsigned int lock, sync;
-
-	status1 = madifx_read(hdspm, HDSPM_RD_STATUS_1); /* s1 */
-	status2 = madifx_read(hdspm, HDSPM_RD_STATUS_2); /* freq */
-	status3 = madifx_read(hdspm, HDSPM_RD_STATUS_3); /* s2 */
-
-	control = hdspm->control_register;
-
-	snd_iprintf(buffer, "STATUS1: 0x%08x\n", status1);
-	snd_iprintf(buffer, "STATUS2: 0x%08x\n", status2);
-	snd_iprintf(buffer, "STATUS3: 0x%08x\n", status3);
-
-
-	snd_iprintf(buffer, "\n*** CLOCK MODE\n\n");
-
-	snd_iprintf(buffer, "Clock mode      : %s\n",
-		(madifx_system_clock_mode(hdspm) == 0) ? "master" : "slave");
-	snd_iprintf(buffer, "System frequency: %d Hz\n",
-		madifx_get_system_sample_rate(hdspm));
-
-	snd_iprintf(buffer, "\n*** INPUT STATUS\n\n");
-
-	lock = 0x1;
-	sync = 0x100;
-
-	for (i = 0; i < 8; i++) {
-		snd_iprintf(buffer, "s1_input %d: Lock %d, Sync %d, Freq %s\n",
-				i,
-				(status1 & lock) ? 1 : 0,
-				(status1 & sync) ? 1 : 0,
-				texts_freq[(status2 >> (i * 4)) & 0xF]);
-
-		lock = lock<<1;
-		sync = sync<<1;
-	}
-
-	snd_iprintf(buffer, "WC input: Lock %d, Sync %d, Freq %s\n",
-			(status1 & 0x1000000) ? 1 : 0,
-			(status1 & 0x2000000) ? 1 : 0,
-			texts_freq[(status1 >> 16) & 0xF]);
-
-	snd_iprintf(buffer, "TCO input: Lock %d, Sync %d, Freq %s\n",
-			(status1 & 0x4000000) ? 1 : 0,
-			(status1 & 0x8000000) ? 1 : 0,
-			texts_freq[(status1 >> 20) & 0xF]);
-
-	snd_iprintf(buffer, "SYNC IN: Lock %d, Sync %d, Freq %s\n",
-			(status3 & 0x400) ? 1 : 0,
-			(status3 & 0x800) ? 1 : 0,
-			texts_freq[(status2 >> 12) & 0xF]);
-
-}
-#endif
 
 #ifdef CONFIG_SND_DEBUG
 static void
@@ -5180,56 +4510,15 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 		break;
 	}
 
-	/* TCO detection */
-	/* FIXME: TCO detection on MADIFX missing */
-	switch (hdspm->io_type) {
-	case AIO:
-	case RayDAT:
-		if (madifx_read(hdspm, HDSPM_statusRegister2) &
-				HDSPM_s2_tco_detect) {
-			hdspm->midiPorts++;
-			hdspm->tco = kzalloc(sizeof(struct madifx_tco),
-					GFP_KERNEL);
-			if (NULL != hdspm->tco) {
-				madifx_tco_write(hdspm);
-			}
-			snd_printk(KERN_INFO "HDSPM: AIO/RayDAT TCO module found\n");
-		} else {
-			hdspm->tco = NULL;
-		}
-		break;
-
-	case MADI:
-		if (madifx_read(hdspm, HDSPM_statusRegister) & HDSPM_tco_detect) {
-			hdspm->midiPorts++;
-			hdspm->tco = kzalloc(sizeof(struct madifx_tco),
-					GFP_KERNEL);
-			if (NULL != hdspm->tco) {
-				madifx_tco_write(hdspm);
-			}
-			snd_printk(KERN_INFO "HDSPM: MADI TCO module found\n");
-		} else {
-			hdspm->tco = NULL;
-		}
-		break;
-
-	default:
-		hdspm->tco = NULL;
-	}
 
 	/* texts */
 	switch (hdspm->io_type) {
         /* Keep the switch if MFXT will be different */
 	case MADIFX:
-		if (hdspm->tco) {
-			hdspm->texts_autosync = texts_autosync_madi_tco;
-			hdspm->texts_autosync_items = 4;
-		} else {
-			hdspm->texts_autosync = texts_madifx_clock_source;
-			hdspm->texts_autosync_items = 6;
-			hdspm->texts_clocksource = texts_madifx_clock_source;
-			hdspm->texts_clocksource_items = 6;
-		}
+		hdspm->texts_autosync = texts_madifx_clock_source;
+		hdspm->texts_autosync_items = 6;
+		hdspm->texts_clocksource = texts_madifx_clock_source;
+		hdspm->texts_clocksource_items = 6;
 		break;
 	}
 
