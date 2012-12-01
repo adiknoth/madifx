@@ -3300,14 +3300,9 @@ snd_madifx_proc_read_madifx(struct snd_info_entry * entry,
 	struct hdspm *hdspm = entry->private_data;
 	u32 status, inp_status, control, freq;
 
-	char *pref_sync_ref;
-	char *autosync_ref;
 	char *system_clock_mode;
-	char *insel;
-	int x, x2;
+	int x;
 
-	/* TCO stuff */
-	int a, ltc, frames, seconds, minutes, hours;
 	unsigned int period;
 	u64 freq_const = 0;
 	u32 rate;
@@ -4665,7 +4660,6 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 	struct madifx_mixer_ioctl mixer;
 	struct madifx_config info;
 	struct madifx_status status;
-	struct madifx_version madifx_version;
 	struct madifx_level_buffer *levels;
 	unsigned int statusregister;
 	long unsigned int s;
@@ -4673,7 +4667,7 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 
 	switch (cmd) {
 
-	case SNDRV_MADIFX_GET_LEVELBUFFER:
+	case SNDRV_MADIFX_IOCTL_GET_LEVEL:
 		{
 			int row;
 
@@ -4742,23 +4736,33 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 		break;
 
 
-	case SNDRV_HDSPM_IOCTL_GET_CONFIG:
+	case SNDRV_MADIFX_IOCTL_GET_CONFIG:
 
 		memset(&info, 0, sizeof(info));
 		spin_lock_irq(&hdspm->lock);
-		info.pref_sync_ref = madifx_get_clock_select(hdspm);
-		info.wordclock_sync_check = madifx_wc_sync_check(hdspm);
 
-		info.system_sample_rate = hdspm->system_sample_rate;
-		info.autosync_sample_rate =
-			madifx_external_sample_rate(hdspm);
-		info.system_clock_mode = madifx_system_clock_mode(hdspm);
-		info.clock_source = madifx_clock_source(hdspm);
-		info.autosync_ref = madifx_autosync_ref(hdspm);
-#if 0
-		info.line_out = madifx_line_out(hdspm);
-#endif
-		info.passthru = 0;
+		for (i=0; i < ARRAY_SIZE(info.madi_tx_64); i++) {
+			info.madi_tx_64[i] = madifx_read_toggle_setting(hdspm,
+					(MADIFX_madi1_tx_64ch << i));
+
+			info.madi_smux[i] = madifx_read_toggle_setting(hdspm,
+					(MADIFX_madi1_smux << i));
+		}
+
+		info.wcterm = madifx_read_toggle_setting(hdspm,
+				MADIFX_WCK_TERM);
+
+		info.wck48 = madifx_read_toggle_setting(hdspm, MADIFX_WCK48);
+
+		info.aespro = madifx_read_toggle_setting(hdspm, MADIFX_PRO);
+
+		info.redundancy_mode = madifx_read_toggle_setting(hdspm,
+				MADIFX_redundancy_mode);
+
+		info.mirror_madi_out = madifx_read_toggle_setting(hdspm,
+				MADIFX_mirror_madi_out);
+
+
 		spin_unlock_irq(&hdspm->lock);
 		if (copy_to_user(argp, &info, sizeof(info)))
 			return -EFAULT;
@@ -4801,23 +4805,6 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 			return -EFAULT;
 
 
-		break;
-
-	case SNDRV_HDSPM_IOCTL_GET_VERSION:
-		memset(&madifx_version, 0, sizeof(madifx_version));
-
-		madifx_version.card_type = hdspm->io_type;
-		strncpy(madifx_version.cardname, hdspm->card_name,
-				sizeof(madifx_version.cardname));
-		madifx_version.serial = hdspm->serial;
-		madifx_version.firmware_rev = hdspm->firmware_rev;
-		madifx_version.addons = 0;
-		if (hdspm->tco)
-			madifx_version.addons |= HDSPM_ADDON_TCO;
-
-		if (copy_to_user(argp, &madifx_version,
-					sizeof(madifx_version)))
-			return -EFAULT;
 		break;
 
 	case SNDRV_HDSPM_IOCTL_GET_MIXER:

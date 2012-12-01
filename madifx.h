@@ -59,26 +59,22 @@ struct madifx_level_buffer {
 	uint8_t speed; /* enum {ss, ds, qs} */
 };
 
-#define SNDRV_MADIFX_GET_LEVELBUFFER \
+#define SNDRV_MADIFX_IOCTL_GET_LEVEL \
 	_IOR('H', 0x42, struct madifx_level_buffer)
 
 /* ------------ CONFIG block IOCTL ---------------------- */
 
 struct madifx_config {
-	unsigned char pref_sync_ref;
-	unsigned char wordclock_sync_check;
-	unsigned char madi_sync_check;
-	unsigned int system_sample_rate;
-	unsigned int autosync_sample_rate;
-	unsigned char system_clock_mode;
-	unsigned char clock_source;
-	unsigned char autosync_ref;
-	unsigned char line_out;
-	unsigned int passthru;
-	unsigned int analog_out;
+	uint8_t madi_tx_64[3];
+	uint8_t madi_smux[3];
+	uint8_t wcterm;
+	uint8_t wck48;
+	uint8_t aespro;
+	uint8_t redundancy_mode;
+	uint8_t mirror_madi_out;
 };
 
-#define SNDRV_HDSPM_IOCTL_GET_CONFIG \
+#define SNDRV_MADIFX_IOCTL_GET_CONFIG \
 	_IOR('H', 0x41, struct madifx_config)
 
 
@@ -141,21 +137,6 @@ struct madifx_status {
 #define SNDRV_HDSPM_IOCTL_GET_STATUS \
 	_IOR('H', 0x47, struct madifx_status)
 
-/**
- * Get information about the card and its add-ons.
- **/
-
-#define HDSPM_ADDON_TCO 1
-
-struct madifx_version {
-	uint8_t card_type; /* enum madifx_io_type */
-	char cardname[20];
-	unsigned int serial;
-	unsigned short firmware_rev;
-	int addons;
-};
-
-#define SNDRV_HDSPM_IOCTL_GET_VERSION _IOR('H', 0x48, struct madifx_version)
 
 /* ------------- get Matrix Mixer IOCTL --------------- */
 
@@ -202,7 +183,6 @@ struct madifx_mixer_ioctl {
 /* typedefs for compatibility to user-space */
 typedef struct madifx_peak_rms madifx_peak_rms_t;
 typedef struct madifx_config_info madifx_config_info_t;
-typedef struct madifx_version madifx_version_t;
 typedef struct madifx_channelfader snd_madifx_channelfader_t;
 typedef struct madifx_mixer madifx_mixer_t;
 
