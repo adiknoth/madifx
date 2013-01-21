@@ -3188,17 +3188,6 @@ static int snd_madifx_hw_rule_out_channels(struct snd_pcm_hw_params *params,
 }
 
 
-static unsigned int madifx_aes32_sample_rates[] = {
-	32000, 44100, 48000, 64000, 88200, 96000, 128000, 176400, 192000
-};
-
-static struct snd_pcm_hw_constraint_list
-madifx_hw_constraints_aes32_sample_rates = {
-	.count = ARRAY_SIZE(madifx_aes32_sample_rates),
-	.list = madifx_aes32_sample_rates,
-	.mask = 0
-};
-
 static int snd_madifx_playback_open(struct snd_pcm_substream *substream)
 {
 	struct hdspm *hdspm = snd_pcm_substream_chip(substream);
