@@ -2092,7 +2092,6 @@ static int snd_madifx_create_controls(struct snd_card *card,
 {
 	unsigned int idx, limit;
 	int err;
-	struct snd_kcontrol *kctl;
 	struct snd_kcontrol_new *list = NULL;
 
 	switch (hdspm->io_type) {
@@ -2124,6 +2123,7 @@ static int snd_madifx_create_controls(struct snd_card *card,
 		limit = hdspm->ss_out_channels;
 	}
 	for (idx = 0; idx < limit; ++idx) {
+		struct snd_kcontrol *kctl;
 		snd_madifx_playback_mixer.index = idx + 1;
 		kctl = snd_ctl_new1(&snd_madifx_playback_mixer, hdspm);
 		err = snd_ctl_add(card, kctl);
