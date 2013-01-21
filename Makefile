@@ -5,6 +5,12 @@ obj-m := madifx.o
 
 else
 
+ifeq ($(BROKEN_WIP),1)
+	BROKEN = -DCONFIG_SND_MADIFX_BROKEN=1
+else
+	BROKEN =
+endif
+
 snd-madifx-objs := madifx.o
 
 KDIR   := /lib/modules/$(shell uname -r)/build
@@ -14,7 +20,7 @@ BINDIR := $(DESTDIR)/usr/local/bin
 INCDIR := $(DESTDIR)/usr/include/alsa/sound
 
 default::
-	$(MAKE) -Wall -Wextra -C $(KDIR) SUBDIRS=$(PWD) EXTRA_CFLAGS="-g" modules
+	$(MAKE) -Wall -Wextra -C $(KDIR) SUBDIRS=$(PWD) EXTRA_CFLAGS="-g ${BROKEN}" modules
 
 install-only:: default
 	mkdir -p $(MODDIR) $(BINDIR)
