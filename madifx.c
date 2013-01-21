@@ -44,7 +44,7 @@
 #include <sound/hwdep.h>
 #include <sound/initval.h>
 
-#include "madifx.h"
+#include <sound/madifx.h>
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX; /* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR; /* ID for this card */
