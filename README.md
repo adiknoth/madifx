@@ -51,6 +51,17 @@ TODO
  * Implement new userspace tools (see above)
  * Submit to mainline
 
+
+Hacking
+-------
+If you want to work on mixer/level support, compile with
+
+   `make BROKEN_WIP=1`
+
+to include the broken mixer/level kernel code. The name is pretty obvious,
+it's meant for driver/tool developers, not users.
+
+
 Acknowledgement
 ---------------
 Thanks to [IOSONO](http://www.iosono-sound.com/) for hosting the card
