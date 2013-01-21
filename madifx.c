@@ -874,30 +874,6 @@ static int madifx_set_rate(struct hdspm *hdspm, int rate, int called_internally)
 	return 0;
 }
 
-/* mainly for init to 0 on load */
-static void all_in_all_mixer(struct hdspm *hdspm, int sgain)
-{
-	int i, j;
-	unsigned int gain;
-
-	/* FIXME: MADI FX unsupported, yet. */
-	if (MADIFX == hdspm->io_type)
-		return;
-
-	if (sgain > UNITY_GAIN)
-		gain = UNITY_GAIN;
-	else if (sgain < 0)
-		gain = 0;
-	else
-		gain = sgain;
-
-	for (i = 0; i < HDSPM_MIXER_CHANNELS; i++)
-		for (j = 0; j < HDSPM_MIXER_CHANNELS; j++) {
-			madifx_write_in_gain(hdspm, i, j, gain);
-			madifx_write_pb_gain(hdspm, i, j, gain);
-		}
-}
-
 /*----------------------------------------------------------------------------
    MIDI
   ----------------------------------------------------------------------------*/
@@ -2427,11 +2403,6 @@ static int snd_madifx_set_defaults(struct hdspm *hdspm)
 	madifx_write(hdspm, MADIFX_CONTROL_REG, hdspm->control_register);
 
 	madifx_compute_period_size(hdspm);
-
-	/* silence everything */
-
-	/* FIXME */
-	/* all_in_all_mixer(hdspm, 0 * UNITY_GAIN); */
 
 	madifx_write(hdspm, MADIFX_SETTINGS_REG, hdspm->settings_register);
 
