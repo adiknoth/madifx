@@ -2609,13 +2609,7 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 		return err;
 	}
 
-	/* Memory allocation, takashi's method, dont know if we should
-	 * spinlock
-	 */
-	/* malloc all buffer even if not enabled to get sure */
-	/* Update for MADI rev 204: we need to allocate for all channels,
-	 * otherwise it doesn't work at 96kHz */
-
+	/* Memory allocation */
 #define NUM_AES_PAGES (32768*2/4096)
 #define NUM_MADI_PAGES (32768*192/4096)
 #define NUM_DMA_CH_PAGES (32768*8/4096)
