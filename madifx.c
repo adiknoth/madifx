@@ -449,7 +449,6 @@ static int __devinit snd_madifx_create_pcm(struct snd_card *card,
 
 static inline void snd_madifx_initialize_midi_flush(struct hdspm *hdspm);
 static int madifx_update_simple_mixer_controls(struct hdspm *hdspm);
-static int madifx_autosync_ref(struct hdspm *hdspm);
 static int madifx_external_freq_index(struct hdspm *hdspm, enum madifx_syncsource port);
 static int madifx_get_clock_select(struct hdspm *hdspm);
 static int snd_madifx_set_defaults(struct hdspm *hdspm);
