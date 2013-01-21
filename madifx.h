@@ -1,5 +1,5 @@
-#ifndef __SOUND_HDSPM_H
-#define __SOUND_HDSPM_H
+#ifndef __SOUND_MADIFX_H
+#define __SOUND_MADIFX_H
 /*
  *   Copyright (C) 2003 Winfried Ritsch (IEM)
  *   based on hdsp.h from Thomas Charbonnel (thomas@undata.org)
