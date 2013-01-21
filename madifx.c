@@ -67,6 +67,11 @@ MODULE_DESCRIPTION("RME MADIFX");
 MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 
+/* Mixer support is still work in progress. Disabled for users, but the code
+ * is shipped to ease hacking.
+ */
+#define WIP_MIXER   0
+
 /* --- Write registers. ---
   These are defined as byte-offsets from the iobase value.  */
 
@@ -448,7 +453,6 @@ static int __devinit snd_madifx_create_pcm(struct snd_card *card,
 					  struct hdspm *hdspm);
 
 static inline void snd_madifx_initialize_midi_flush(struct hdspm *hdspm);
-static int madifx_update_simple_mixer_controls(struct hdspm *hdspm);
 static int madifx_external_freq_index(struct hdspm *hdspm, enum madifx_syncsource port);
 static int madifx_get_clock_select(struct hdspm *hdspm);
 static int snd_madifx_set_defaults(struct hdspm *hdspm);
@@ -499,6 +503,7 @@ static inline int madifx_read_pb_gain(struct hdspm *hdspm, unsigned int chan,
 	return hdspm->mixer->ch[chan].pb[pb];
 }
 
+#if WIP_MIXER
 static int madifx_write_in_gain(struct hdspm *hdspm, unsigned int chan,
 				      unsigned int in, unsigned short data)
 {
@@ -524,6 +529,7 @@ static int madifx_write_pb_gain(struct hdspm *hdspm, unsigned int chan,
 		    (hdspm->mixer->ch[chan].pb[pb] = data & 0xFFFF));
 	return 0;
 }
+#endif /* WIP_MIXER */
 
 
 /* enable DMA for specific channels, now available for DSP-MADI */
@@ -1789,6 +1795,7 @@ static int snd_madifx_put_toggle_setting(struct snd_kcontrol *kcontrol,
 	.put = snd_madifx_put_mixer \
 }
 
+#if WIP_MIXER
 static int snd_madifx_info_mixer(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_info *uinfo)
 {
@@ -1951,6 +1958,7 @@ static int snd_madifx_put_playback_mixer(struct snd_kcontrol *kcontrol,
 	spin_unlock_irq(&hdspm->lock);
 	return change;
 }
+#endif /* WIP_MIXER */
 
 #define HDSPM_SYNC_CHECK(xname, xindex) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
@@ -2049,6 +2057,7 @@ static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 };
 
 
+#if WIP_MIXER
 static struct snd_kcontrol_new snd_madifx_playback_mixer = HDSPM_PLAYBACK_MIXER;
 
 
@@ -2075,6 +2084,7 @@ static int madifx_update_simple_mixer_controls(struct hdspm *hdspm)
 
 	return 0;
 }
+#endif
 
 
 static int snd_madifx_create_controls(struct snd_card *card,
