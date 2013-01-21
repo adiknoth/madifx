@@ -67,10 +67,10 @@ MODULE_DESCRIPTION("RME MADIFX");
 MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 
-/* Mixer support is still work in progress. Disabled for users, but the code
- * is shipped to ease hacking.
+/* New mixer support is still work in progress. All references to the old
+ * mixer are disabled but shipped nevertheless to ease hacking.
  */
-#define WIP_MIXER   0
+#define OLD_MIXER   0
 
 /* --- Write registers. ---
   These are defined as byte-offsets from the iobase value.  */
@@ -407,10 +407,12 @@ struct hdspm {
 	struct pci_dev *pci;	/* and an pci info */
 
 	/* Mixer vars */
+#if OLD_MIXER
 	/* fast alsa mixer */
 	struct snd_kcontrol *playback_mixer_ctls[HDSPM_MAX_CHANNELS];
 	/* but input to much, so not used */
 	struct snd_kcontrol *input_mixer_ctls[HDSPM_MAX_CHANNELS];
+#endif /* OLD_MIXER */
 	/* full mixer accessible over mixer ioctl or hwdep-device */
 	struct madifx_newmixer *newmixer;
 	dma_addr_t *dmaPageTable;
@@ -483,7 +485,7 @@ static inline unsigned int madifx_read(struct hdspm *hdspm, unsigned int reg)
 	return readl(hdspm->iobase + reg);
 }
 
-#if WIP_MIXER
+#if OLD_MIXER
 /* for each output channel (chan) I have an Input (in) and Playback (pb) Fader
    mixer is write only on hardware so we have to cache him for read
    each fader is a u32, but uses only the first 16 bit */
@@ -530,7 +532,7 @@ static int madifx_write_pb_gain(struct hdspm *hdspm, unsigned int chan,
 		    (hdspm->mixer->ch[chan].pb[pb] = data & 0xFFFF));
 	return 0;
 }
-#endif /* WIP_MIXER */
+#endif /* OLD_MIXER */
 
 
 /* enable DMA for specific channels, now available for DSP-MADI */
@@ -1796,7 +1798,7 @@ static int snd_madifx_put_toggle_setting(struct snd_kcontrol *kcontrol,
 	.put = snd_madifx_put_mixer \
 }
 
-#if WIP_MIXER
+#if OLD_MIXER
 static int snd_madifx_info_mixer(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_info *uinfo)
 {
@@ -1959,7 +1961,7 @@ static int snd_madifx_put_playback_mixer(struct snd_kcontrol *kcontrol,
 	spin_unlock_irq(&hdspm->lock);
 	return change;
 }
-#endif /* WIP_MIXER */
+#endif /* OLD_MIXER */
 
 #define HDSPM_SYNC_CHECK(xname, xindex) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
@@ -2058,7 +2060,7 @@ static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 };
 
 
-#if WIP_MIXER
+#if OLD_MIXER
 static struct snd_kcontrol_new snd_madifx_playback_mixer = HDSPM_PLAYBACK_MIXER;
 
 
