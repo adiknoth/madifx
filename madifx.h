@@ -153,15 +153,6 @@ struct madifx_status {
 #define MADIFX_NUM_LEVEL_PAGES 5
 #define MADIFX_LEVEL_BUFFER_SIZE (MADIFX_NUM_LEVEL_PAGES * 4096)
 
-struct madifx_channelfader {
-	unsigned int in[HDSPM_MIXER_CHANNELS];
-	unsigned int pb[HDSPM_MIXER_CHANNELS];
-};
-
-struct madifx_mixer {
-	struct madifx_channelfader ch[HDSPM_MIXER_CHANNELS];
-};
-
 /* FIXME: maybe move to .c file */
 struct madifx_newmixer {
 	uint32_t listVol[MADIFX_LIST_LENGTH];
@@ -180,7 +171,7 @@ struct madifx_mixer_ioctl {
 typedef struct madifx_peak_rms madifx_peak_rms_t;
 typedef struct madifx_config_info madifx_config_info_t;
 typedef struct madifx_channelfader snd_madifx_channelfader_t;
-typedef struct madifx_mixer madifx_mixer_t;
+typedef struct madifx_newmixer madifx_mixer_t;
 
 
 #endif
