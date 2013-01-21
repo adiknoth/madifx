@@ -139,17 +139,9 @@ struct madifx_status {
 
 /* ------------- get Matrix Mixer IOCTL --------------- */
 
-/* MADI mixer: 64inputs+64playback in 64outputs = 8192 => *4Byte =
- * 32768 Bytes
+/* We don't know too much about the new mixer, yet. See madifx.c for the bits
+ * we already have.
  */
-
-/* organisation is 64 channelfader in a continuous memory block */
-/* equivalent to hardware definition, maybe for future feature of mmap of
- * them
- */
-/* each of 64 outputs has 64 infader and 64 outfader:
-   Ins to Outs mixer[out].in[in], Outstreams to Outs mixer[out].pb[pb] */
-
 #define HDSPM_MIXER_CHANNELS HDSPM_MAX_CHANNELS
 #define MADIFX_LIST_LENGTH 4096
 #define MADIFX_NUM_OUTPUT_GAINS 198
