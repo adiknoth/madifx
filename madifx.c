@@ -412,7 +412,6 @@ struct hdspm {
 	/* but input to much, so not used */
 	struct snd_kcontrol *input_mixer_ctls[HDSPM_MAX_CHANNELS];
 	/* full mixer accessible over mixer ioctl or hwdep-device */
-	struct madifx_mixer *mixer;
 	struct madifx_newmixer *newmixer;
 	dma_addr_t *dmaPageTable;
 	struct snd_dma_buffer dmaLevelBuffer;
@@ -482,6 +481,7 @@ static inline unsigned int madifx_read(struct hdspm *hdspm, unsigned int reg)
 	return readl(hdspm->iobase + reg);
 }
 
+#if WIP_MIXER
 /* for each output channel (chan) I have an Input (in) and Playback (pb) Fader
    mixer is write only on hardware so we have to cache him for read
    each fader is a u32, but uses only the first 16 bit */
@@ -503,7 +503,6 @@ static inline int madifx_read_pb_gain(struct hdspm *hdspm, unsigned int chan,
 	return hdspm->mixer->ch[chan].pb[pb];
 }
 
-#if WIP_MIXER
 static int madifx_write_in_gain(struct hdspm *hdspm, unsigned int chan,
 				      unsigned int in, unsigned short data)
 {
@@ -3460,8 +3459,8 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 	case SNDRV_HDSPM_IOCTL_GET_MIXER:
 		if (copy_from_user(&mixer, argp, sizeof(mixer)))
 			return -EFAULT;
-		if (copy_to_user((void __user *)mixer.mixer, hdspm->mixer,
-					sizeof(struct madifx_mixer)))
+		if (copy_to_user((void __user *)mixer.mixer, hdspm->newmixer,
+					sizeof(struct madifx_newmixer)))
 			return -EFAULT;
 		break;
 
@@ -3769,16 +3768,6 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 		return -ENOMEM;
 	}
 
-	/* FIXME: Drop this later when mixer is correctly replaced */
-	hdspm->mixer = kzalloc(sizeof(struct madifx_mixer), GFP_KERNEL);
-	if (!hdspm->mixer) {
-		snd_printk(KERN_ERR
-				"HDSPM: unable to kmalloc Mixer memory of %d Bytes\n",
-				(int)sizeof(struct madifx_mixer));
-		return -ENOMEM;
-	}
-
-
 	{
 		/* This somehow initialises the mixer. I have no idea what it
 		 * does exactly.
@@ -3875,7 +3864,7 @@ static int snd_madifx_free(struct hdspm *hdspm)
 	if (hdspm->irq >= 0)
 		free_irq(hdspm->irq, (void *) hdspm);
 
-	kfree(hdspm->mixer);
+	kfree(hdspm->newmixer);
 	kfree(hdspm->dmaPageTable);
 	snd_dma_free_pages(&(hdspm->dmaLevelBuffer));
 

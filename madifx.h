@@ -161,7 +161,7 @@ struct madifx_newmixer {
 };
 
 struct madifx_mixer_ioctl {
-	struct madifx_mixer *mixer;
+	struct madifx_newmixer *mixer;
 };
 
 /* use indirect access due to the limit of ioctl bit size */
