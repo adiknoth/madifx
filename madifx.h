@@ -35,6 +35,7 @@ enum madifx_speed {
 
 /* -------------------- IOCTL Peak/RMS Meters -------------------- */
 
+#ifdef CONFIG_SND_MADIFX_BROKEN
 struct madifx_level_buffer {
 	uint32_t rms_out_pre[2 * 256];
 	uint32_t peak_out_pre[256];
@@ -56,6 +57,8 @@ struct madifx_level_buffer {
 
 #define SNDRV_MADIFX_IOCTL_GET_LEVEL \
 	_IOR('H', 0x42, struct madifx_level_buffer)
+
+#endif /* CONFIG_SND_MADIFX_BROKEN */
 
 /* ------------ CONFIG block IOCTL ---------------------- */
 
@@ -164,8 +167,10 @@ struct madifx_mixer_ioctl {
 	struct madifx_newmixer *mixer;
 };
 
+#ifdef CONFIG_SND_MADIFX_BROKEN
 /* use indirect access due to the limit of ioctl bit size */
 #define SNDRV_HDSPM_IOCTL_GET_MIXER _IOR('H', 0x44, struct madifx_mixer_ioctl)
+#endif
 
 /* typedefs for compatibility to user-space */
 typedef struct madifx_peak_rms madifx_peak_rms_t;

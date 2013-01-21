@@ -426,7 +426,9 @@ struct hdspm {
 
 	int speedmode;
 
+#ifdef CONFIG_SND_MADIFX_BROKEN
 	struct madifx_level_buffer peak_rms;
+#endif
 
 };
 
@@ -3319,15 +3321,18 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 {
 	void __user *argp = (void __user *)arg;
 	struct hdspm *hdspm = hw->private_data;
-	struct madifx_mixer_ioctl mixer;
 	struct madifx_config info;
 	struct madifx_status status;
+#ifdef CONFIG_SND_MADIFX_BROKEN
 	struct madifx_level_buffer *levels;
+	struct madifx_mixer_ioctl mixer;
 	long unsigned int s;
+#endif /* CONFIG_SND_MADIFX_BROKEN */
 	int i = 0;
 
 	switch (cmd) {
 
+#ifdef CONFIG_SND_MADIFX_BROKEN
 	case SNDRV_MADIFX_IOCTL_GET_LEVEL:
 		{
 			int row;
@@ -3393,6 +3398,7 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 		madifx_write(hdspm, MADIFX_START_LEVEL, 0);
 
 		break;
+#endif /* CONFIG_SND_MADIFX_BROKEN */
 
 
 	case SNDRV_MADIFX_IOCTL_GET_CONFIG:
@@ -3456,6 +3462,7 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 
 		break;
 
+#ifdef CONFIG_SND_MADIFX_BROKEN
 	case SNDRV_HDSPM_IOCTL_GET_MIXER:
 		if (copy_from_user(&mixer, argp, sizeof(mixer)))
 			return -EFAULT;
@@ -3463,6 +3470,7 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 					sizeof(struct madifx_newmixer)))
 			return -EFAULT;
 		break;
+#endif /* CONFIG_SND_MADIFX_BROKEN */
 
 	default:
 		return -EINVAL;
