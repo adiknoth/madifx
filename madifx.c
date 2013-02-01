@@ -106,15 +106,15 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 /* --- Read registers. ---
    These are defined as byte-offsets from the iobase value */
 
-#define MADIFX_RD_STATUS		(0*4)
+#define MADIFX_RD_STATUS	(0*4)
 #define MADIFX_RD_INP_STATUS	(1*4)
-#define MADIFX_RD_INP_FREQ		(2*4)
-#define MADIFX_RD_PLL_FREQ		(3*4)
-#define MADIFX_RD_VERSION		(4*4) /* card_type(7..0) & "0000" & build(19..0) */
-#define MADIFX_RD_FLASH			(5*4)
-#define MADIFX_RD_BARCODE0		(6*4)
-#define MADIFX_RD_BARCODE1		(7*4)
-#define MADIFX_RD_DSP_DATA		(8*4)
+#define MADIFX_RD_INP_FREQ	(2*4)
+#define MADIFX_RD_PLL_FREQ	(3*4)
+#define MADIFX_RD_VERSION	(4*4) /* card_type(7..0) & "0000" & build(19..0) */
+#define MADIFX_RD_FLASH		(5*4)
+#define MADIFX_RD_BARCODE0	(6*4)
+#define MADIFX_RD_BARCODE1	(7*4)
+#define MADIFX_RD_DSP_DATA	(8*4)
 #define MADIFX_RD_DSP_STATUS	(9*4)
 #define MADIFX_midi_in0_data	(12*4)
 #define MADIFX_midi_in1_data	(13*4)
@@ -131,24 +131,24 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 
 /* input status */
 
-#define MADIFX_madi1_lock		0x0001
-#define MADIFX_madi2_lock		0x0002
-#define MADIFX_madi3_lock		0x0004
+#define MADIFX_madi1_lock	0x0001
+#define MADIFX_madi2_lock	0x0002
+#define MADIFX_madi3_lock	0x0004
 #define MADIFX_aes_lock		0x0008
-#define MADIFX_word_lock		0x0010
-#define MADIFX_madi1_sync		0x0020
-#define MADIFX_madi2_sync		0x0040
-#define MADIFX_madi3_sync		0x0080
-#define MADIFX_word_sync		0x0100
+#define MADIFX_word_lock	0x0010
+#define MADIFX_madi1_sync	0x0020
+#define MADIFX_madi2_sync	0x0040
+#define MADIFX_madi3_sync	0x0080
+#define MADIFX_word_sync	0x0100
 #define MADIFX_aes_sync		0x0200
 #define MADIFX_madi1_rx_64ch	0x0400
 #define MADIFX_madi2_rx_64ch	0x0800
 #define MADIFX_madi3_rx_64ch	0x1000
-#define MADIFX_SelSyncRef0		0x2000
-#define MADIFX_SelSyncRef1		0x4000
-#define MADIFX_SelSyncRef2		0x8000
-#define MADIFX_MADIInput0		0x10000
-#define MADIFX_MADIInput1		0x20000
+#define MADIFX_SelSyncRef0	0x2000
+#define MADIFX_SelSyncRef1	0x4000
+#define MADIFX_SelSyncRef2	0x8000
+#define MADIFX_MADIInput0	0x10000
+#define MADIFX_MADIInput1	0x20000
 #define MADIFX_redundancy_rb	0x40000
 #define MADIFX_mirror_out_rb	0x80000
 #define MADIFX_sync_in_lock	0x100000
@@ -156,26 +156,26 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 
 /* control register bits */
 
-#define MADIFX_START				0x00000001
-#define MADIFX_freq0				0x00000002
-#define MADIFX_freq1				0x00000004
-#define MADIFX_freq2				0x00000008
-#define MADIFX_freq3				0x00000010
-#define MADIFX_BUF_SIZ_0			0x00000020
-#define MADIFX_BUF_SIZ_1			0x00000040
-#define MADIFX_BUF_SIZ_2			0x00000080
-#define MADIFX_LAT_0				0x00000100
-#define MADIFX_LAT_1				0x00000200
-#define MADIFX_LAT_2				0x00000400
-#define MADIFX_LAT_3				0x00000800
-#define MADIFX_IE_AUDIO			0x00001000
-#define MADIFX_IEN0				0x00002000
-#define MADIFX_IEN1				0x00004000
-#define MADIFX_IEN2				0x00008000
-#define MADIFX_IEN3				0x00010000
-#define MADIFX_float_format		0x00020000
-#define MADIFX_CLR_TMS				0x00040000
-#define MADIFX_Dolby				0x00080000
+#define MADIFX_START		0x00000001
+#define MADIFX_freq0		0x00000002
+#define MADIFX_freq1		0x00000004
+#define MADIFX_freq2		0x00000008
+#define MADIFX_freq3		0x00000010
+#define MADIFX_BUF_SIZ_0	0x00000020
+#define MADIFX_BUF_SIZ_1	0x00000040
+#define MADIFX_BUF_SIZ_2	0x00000080
+#define MADIFX_LAT_0		0x00000100
+#define MADIFX_LAT_1		0x00000200
+#define MADIFX_LAT_2		0x00000400
+#define MADIFX_LAT_3		0x00000800
+#define MADIFX_IE_AUDIO		0x00001000
+#define MADIFX_IEN0		0x00002000
+#define MADIFX_IEN1		0x00004000
+#define MADIFX_IEN2		0x00008000
+#define MADIFX_IEN3		0x00010000
+#define MADIFX_float_format	0x00020000
+#define MADIFX_CLR_TMS		0x00040000
+#define MADIFX_Dolby		0x00080000
 
 #define MADIFX_kFrequencyMask	(MADIFX_freq0 + MADIFX_freq1 + MADIFX_freq2 + MADIFX_freq3)
 #define MADIFX_kBufferPositionMask	0xFFF0
@@ -252,10 +252,10 @@ enum {
 #define MADIFX_RD_PEAK_OUT_PRE	(4608*1)
 
 /* MADIFX MIDI Interrupt enable */
-#define MADIFX_IEN0				0x00002000
-#define MADIFX_IEN1				0x00004000
-#define MADIFX_IEN2				0x00008000
-#define MADIFX_IEN3				0x00010000
+#define MADIFX_IEN0		0x00002000
+#define MADIFX_IEN1		0x00004000
+#define MADIFX_IEN2		0x00008000
+#define MADIFX_IEN3		0x00010000
 
 /* status register, MIDI IRQ Pending */
 #define MADIFX_mIRQ0		0x10000000
