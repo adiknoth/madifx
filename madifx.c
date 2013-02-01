@@ -149,6 +149,10 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define MADIFX_SelSyncRef2		0x8000
 #define MADIFX_MADIInput0		0x10000
 #define MADIFX_MADIInput1		0x20000
+#define MADIFX_redundancy_rb	0x40000
+#define MADIFX_mirror_out_rb	0x80000
+#define MADIFX_sync_in_lock	0x100000
+#define MADIFX_sync_in_sync	0x200000
 
 /* control register bits */
 
@@ -230,6 +234,10 @@ enum {
 #define MADIFX_word_freq1	0x20000
 #define MADIFX_word_freq2	0x40000
 #define MADIFX_word_freq3	0x80000
+#define MADIFX_sync_in_freq0	0x100000
+#define MADIFX_sync_in_freq1	0x200000
+#define MADIFX_sync_in_freq2	0x400000
+#define MADIFX_sync_in_freq3	0x800000
 
 /* Index to DMA level buffer in uint32_t units */
 #define MADIFX_RD_RMS_IN	(0*1)
