@@ -315,7 +315,8 @@ static char *texts_madifx_clock_source[] = {
 	"Word Clock",
 	"MADI 1 In",
 	"MADI 2 In",
-	"MADI 3 In"
+	"MADI 3 In",
+	"Sync In"
 };
 
 
@@ -722,7 +723,8 @@ static int madifx_get_external_rate(struct hdspm *hdspm)
 
 	switch (current_clock) {
 	case 0:
-		/* Master. Should not happen */
+	case 6:
+		/* Master or Sync-In */
 		break;
 	case 1:
 	case 2:
@@ -1336,6 +1338,10 @@ static int madifx_external_freq_index(struct hdspm *hdspm, enum madifx_syncsourc
 		lock_bit = MADIFX_word_lock;
 		freq0_bit = MADIFX_word_freq0;
 		break;
+	case syncsource_syncin:
+		lock_bit = MADIFX_sync_in_lock;
+		freq0_bit = MADIFX_sync_in_freq0;
+		break;
 	default:
 		snd_printk(KERN_ERR "MADIFX: Unknown external port ID %i\n", port);
 		return 0;
@@ -1633,6 +1639,8 @@ static int madifx_get_clock_select(struct hdspm *hdspm)
 				i = 4; break;
 			case MADIFX_SelSyncRef0 * 5:
 				i = 5; break;
+			case MADIFX_SelSyncRef0 * 6:
+				i = 6; break;
 			default:
 						     /* We are master */
 						     i = 0;
@@ -1999,12 +2007,22 @@ static int snd_madifx_info_sync_check(struct snd_kcontrol *kcontrol,
 
 static int madifx_sync_check(struct hdspm *hdspm, int idx)
 {
-	int status, lock, sync;
+	u32 status, lockmask, syncmask;
+	int lock, sync;
 
 	status = madifx_read(hdspm, MADIFX_RD_INP_STATUS);
 
-	lock = (status & (MADIFX_madi1_lock << idx)) ? 1 : 0;
-	sync = (status & (MADIFX_madi1_sync << idx)) ? 1 : 0;
+	if (5 == idx) {
+		/* Sync-In was added later, so it's further up in the register */
+		lockmask = MADIFX_sync_in_lock;
+		syncmask = MADIFX_sync_in_sync;
+	} else {
+		lockmask = (MADIFX_madi1_lock << idx);
+		syncmask = (MADIFX_madi1_sync << idx);
+	}
+
+	lock = (status & lockmask) ? 1 : 0;
+	sync = (status & syncmask) ? 1 : 0;
 
 	if (lock && sync)
 		return 2;
@@ -3836,7 +3854,8 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 	/* Keep the switch if MFXT will be different */
 	case MADIFX:
 		hdspm->texts_clocksource = texts_madifx_clock_source;
-		hdspm->texts_clocksource_items = 6;
+		hdspm->texts_clocksource_items =
+			ARRAY_SIZE(texts_madifx_clock_source);
 		break;
 	}
 

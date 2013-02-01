@@ -109,7 +109,8 @@ enum madifx_syncsource {
 	syncsource_madi3 = 2,
 	syncsource_aes = 3,
 	syncsource_wc = 4,
-	syncsource_none = 5
+	syncsource_syncin = 5,
+	syncsource_none = 6
 };
 
 enum madifx_clocksource {
@@ -125,12 +126,10 @@ enum madifx_clocksource {
 struct madifx_status {
 	uint8_t card_type; /* enum madifx_io_type */
 	uint8_t clock_selection; /* enum madi_clocksource */
-
 	uint32_t system_sample_rate;
-
-	uint8_t sync_check[5]; /* enum madifx_sync, array idx: enum madifx_syncsource */
 	uint8_t madi_channelcount[3]; /* enum madifx_madi_channel_format */
-	uint32_t external_sample_rates[5]; /* enum madifx_syncsource */
+	uint32_t external_sample_rates[6]; /* enum madifx_syncsource */
+	uint8_t sync_check[6]; /* enum madifx_sync, array idx: enum madifx_syncsource */
 };
 
 #define SNDRV_MADIFX_IOCTL_GET_STATUS \
