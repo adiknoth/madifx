@@ -11,7 +11,8 @@ static char *texts_madifx_clock_source[] = {
 	"Word Clock",
 	"MADI 1 In",
 	"MADI 2 In", 
-	"MADI 3 In"
+	"MADI 3 In",
+	"Sync-In"
 };
 
 static char *rxformat[] = { "64", "56", "32", "28", "16", "14", "No lock" };
@@ -100,6 +101,10 @@ int main(int argc, char **argv) {
     printf ("WC (%s): speed: %i\n",
 		    synctext[mystatus.sync_check[syncsource_wc]],
 		    mystatus.external_sample_rates[syncsource_wc]);
+
+    printf ("Sync-In (%s): speed: %i\n",
+		    synctext[mystatus.sync_check[syncsource_syncin]],
+		    mystatus.external_sample_rates[syncsource_syncin]);
 
 
 
