@@ -428,7 +428,6 @@ struct hdspm {
 	struct snd_dma_buffer dmaLevelBuffer;
 
 	char **texts_clocksource;
-	int texts_autosync_items;
 	int texts_clocksource_items;
 
 	cycles_t last_interrupt;
