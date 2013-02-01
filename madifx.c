@@ -2351,6 +2351,10 @@ snd_madifx_proc_read_debug(struct snd_info_entry *entry,
 #endif
 
 
+#if 0
+/* FIXME: Portnames not implemented, yet. hdspm->port_names_in and _out are
+ * set to NULL, so don't derefence them for the time being.
+ */
 static void snd_madifx_proc_ports_in(struct snd_info_entry *entry,
 			  struct snd_info_buffer *buffer)
 {
@@ -2374,6 +2378,7 @@ static void snd_madifx_proc_ports_out(struct snd_info_entry *entry,
 	for (i = 0; i < hdspm->max_channels_out; i++)
 		snd_iprintf(buffer, "%d=%s\n", i+1, hdspm->port_names_out[i]);
 }
+#endif
 
 
 static void __devinit snd_madifx_proc_init(struct hdspm *hdspm)
@@ -2389,11 +2394,14 @@ static void __devinit snd_madifx_proc_init(struct hdspm *hdspm)
 		}
 	}
 
+#if 0
+	/* FIXME: port names still missing for MADIFX */
 	if (!snd_card_proc_new(hdspm->card, "ports.in", &entry))
 		snd_info_set_text_ops(entry, hdspm, snd_madifx_proc_ports_in);
 
 	if (!snd_card_proc_new(hdspm->card, "ports.out", &entry))
 		snd_info_set_text_ops(entry, hdspm, snd_madifx_proc_ports_out);
+#endif
 
 #ifdef CONFIG_SND_DEBUG
 	/* debug file to read all hdspm registers */
