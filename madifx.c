@@ -50,13 +50,13 @@ static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	  /* ID for this card */
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;/* Enable this card */
 
 module_param_array(index, int, NULL, 0444);
-MODULE_PARM_DESC(index, "Index value for RME HDSPM interface.");
+MODULE_PARM_DESC(index, "Index value for RME MADIFX interface.");
 
 module_param_array(id, charp, NULL, 0444);
-MODULE_PARM_DESC(id, "ID string for RME HDSPM interface.");
+MODULE_PARM_DESC(id, "ID string for RME MADIFX interface.");
 
 module_param_array(enable, bool, NULL, 0444);
-MODULE_PARM_DESC(enable, "Enable/disable specific HDSPM soundcards.");
+MODULE_PARM_DESC(enable, "Enable/disable specific MADIFX soundcards.");
 
 
 MODULE_AUTHOR
@@ -836,7 +836,7 @@ static int madifx_set_rate(struct hdspm *hdspm, int rate, int called_internally)
 	if (current_speed != target_speed
 	    && (hdspm->capture_pid >= 0 || hdspm->playback_pid >= 0)) {
 		snd_printk
-		    (KERN_ERR "HDSPM: "
+		    (KERN_ERR "MADIFX: "
 		     "cannot change from %s speed to %s speed mode "
 		     "(capture PID = %d, playback PID = %d)\n",
 		     madifx_speed_names[current_speed],
@@ -3765,7 +3765,7 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 	hdspm->iobase = ioremap_nocache(hdspm->port, io_extent);
 	if (!hdspm->iobase) {
 		snd_printk(KERN_ERR
-				"HDSPM: unable to remap region 0x%lx-0x%lx\n",
+				"MADIFX: unable to remap region 0x%lx-0x%lx\n",
 				hdspm->port, hdspm->port + io_extent - 1);
 		return -EBUSY;
 	}
@@ -3775,7 +3775,7 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 
 	if (request_irq(pci->irq, snd_madifx_interrupt,
 			IRQF_SHARED, KBUILD_MODNAME, hdspm)) {
-		snd_printk(KERN_ERR "HDSPM: unable to use IRQ %d\n", pci->irq);
+		snd_printk(KERN_ERR "MADIFX: unable to use IRQ %d\n", pci->irq);
 		return -EBUSY;
 	}
 
@@ -3789,7 +3789,7 @@ static int __devinit snd_madifx_create(struct snd_card *card,
 	hdspm->newmixer = kzalloc(sizeof(struct madifx_newmixer), GFP_KERNEL);
 	if (!hdspm->newmixer) {
 		snd_printk(KERN_ERR
-				"HDSPM: unable to kmalloc Mixer memory of %d Bytes\n",
+				"MADIFX: unable to kmalloc Mixer memory of %d Bytes\n",
 				(int)sizeof(struct madifx_newmixer));
 		return -ENOMEM;
 	}
