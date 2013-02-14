@@ -425,7 +425,6 @@ struct hdspm {
 	/* full mixer accessible over mixer ioctl or hwdep-device */
 	struct madifx_newmixer *newmixer;
 	dma_addr_t *dmaPageTable;
-	struct snd_dma_buffer dmaLevelBuffer;
 
 	char **texts_clocksource;
 	int texts_clocksource_items;
@@ -437,6 +436,7 @@ struct hdspm {
 	int speedmode;
 
 #ifdef CONFIG_SND_MADIFX_BROKEN
+	struct snd_dma_buffer dmaLevelBuffer;
 	struct madifx_level_buffer peak_rms;
 #endif
 
@@ -3549,11 +3549,13 @@ static int __devinit snd_madifx_create_hwdep(struct snd_card *card,
 static int __devinit snd_madifx_preallocate_memory(struct hdspm *hdspm)
 {
 	int err;
+#ifdef CONFIG_SND_MADIFX_BROKEN
 	int i;
 	int lpti; /* level page table index */
+	dma_addr_t levelPageTable[MADIFX_NUM_LEVEL_PAGES];
+#endif
 	struct snd_pcm *pcm;
 	size_t wanted;
-	dma_addr_t levelPageTable[MADIFX_NUM_LEVEL_PAGES];
 
 	pcm = hdspm->pcm;
 
@@ -3582,6 +3584,7 @@ static int __devinit snd_madifx_preallocate_memory(struct hdspm *hdspm)
 	} else
 		snd_printdd(" Preallocated %zd Bytes\n", wanted);
 
+#ifdef CONFIG_SND_MADIFX_BROKEN
 	/* allocate level buffer */
 	err = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV_SG,
 			snd_dma_pci_data(hdspm->pci),
@@ -3611,6 +3614,7 @@ static int __devinit snd_madifx_preallocate_memory(struct hdspm *hdspm)
 	hdspm->level_buffer = snd_sgbuf_get_ptr(&(hdspm->dmaLevelBuffer), 0);
 
 	memset(hdspm->level_buffer, 0, MADIFX_LEVEL_BUFFER_SIZE);
+#endif /* MADFIX_BROKEN */
 
 
 	return 0;
@@ -3893,7 +3897,9 @@ static int snd_madifx_free(struct hdspm *hdspm)
 
 	kfree(hdspm->newmixer);
 	kfree(hdspm->dmaPageTable);
+#ifdef CONFIG_SND_MADIFX_BROKEN
 	snd_dma_free_pages(&(hdspm->dmaLevelBuffer));
+#endif
 
 	if (hdspm->iobase)
 		iounmap(hdspm->iobase);
