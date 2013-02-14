@@ -27,6 +27,13 @@ Clone this repository, then run
 
 as root. Use `alsamixer` or `amixer` to adjust settings.
 
+On older kernels, your card won't show up in /proc/asound/cards. In this
+case, run
+
+    `patch -p1 < oldkernel.patch`
+
+and run `make install` again.
+
 
 Status
 ------
