@@ -21,18 +21,22 @@ report problems and patches to improve the driver.
 
 Installation
 ------------
-Clone this repository, then run
+Clone this repository.
+
+For all kernels until 3.7.x, run
+
+    patch -p1 < below38.patch
+
+For all kernels until 3.4.x, *also* run
+
+    patch -p1 < oldkernel.patch
+    
+
+Then, run
 
     make install
 
 as root. Use `alsamixer` or `amixer` to adjust settings.
-
-On older kernels, your card won't show up in /proc/asound/cards. In this
-case, run
-
-    `patch -p1 < oldkernel.patch`
-
-and run `make install` again.
 
 
 Status
