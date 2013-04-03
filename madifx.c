@@ -2829,7 +2829,7 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 	    0 : ((info->channel > last_madi_channel) ? 65536 :
 		    131072 + 8 * 4 * 8192 * ((info->channel-2)/8));
 	info->first = (info->channel < 2 || info->channel > last_madi_channel) ?
-	    32 * info->channel : 32 * ((info->channel-2) % 8);
+	    32 * (info->channel % (last_madi_channel + 1)) : 32 * ((info->channel-2) % 8);
 	info->step = (info->channel < 2 || info->channel > last_madi_channel) ?
 	    64 : 256;
 	} else {
