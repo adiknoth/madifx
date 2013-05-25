@@ -2000,13 +2000,26 @@ static int madifx_sync_check(struct hdspm *hdspm, int idx)
 
 	status = madifx_read(hdspm, MADIFX_RD_INP_STATUS);
 
-	if (5 == idx) {
-		/* Sync-In was added later, so it's further up in the register */
+	switch (idx) {
+	case 5:
+		/* Sync-In */
 		lockmask = MADIFX_sync_in_lock;
 		syncmask = MADIFX_sync_in_sync;
-	} else {
+		break;
+	case 4:
+		/* AES */
+		lockmask = MADIFX_aes_lock;
+		syncmask = MADIFX_aes_sync;
+		break;
+	case 3:
+		/* WC */
+		lockmask = MADIFX_word_lock;
+		syncmask = MADIFX_word_sync;
+		break;
+	default:
 		lockmask = (MADIFX_madi1_lock << idx);
 		syncmask = (MADIFX_madi1_sync << idx);
+		break;
 	}
 
 	lock = (status & lockmask) ? 1 : 0;
