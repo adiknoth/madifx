@@ -92,9 +92,9 @@ int main(void) {
       }
  
       for (i = 0; i < 196; i++) {
-          printf ("Linux output ch %i offset %i\n", i ,
-                  (i < 2) ? 0 : ((i > 193) ? 65536 :
-                    131072 + 8 * 4 * 8192 * ((i-2)/8)));
+          printf ("Linux sample offset ch %i offset %i\n", i ,
+			  (i < 2 || i > 193) ?
+	    32 * (i % 194) : 32 * ((i-2) % 8));
       }
 
     return 0;
