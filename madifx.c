@@ -3788,7 +3788,7 @@ static int snd_madifx_create(struct snd_card *card,
 	hdspm->irq = pci->irq;
 
 	snd_printdd("kmalloc Mixer memory of %zd Bytes\n",
-			sizeof(struct madifx_mixer));
+			sizeof(struct madifx_newmixer));
 
 	hdspm->newmixer = kzalloc(sizeof(struct madifx_newmixer), GFP_KERNEL);
 	if (!hdspm->newmixer) {
