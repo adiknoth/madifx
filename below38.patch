@@ -1,5 +1,116 @@
+diff --git a/below38.patch b/below38.patch
+index f430eae..e69de29 100644
+--- a/below38.patch
++++ b/below38.patch
+@@ -1,106 +0,0 @@
+-diff --git a/madifx.c b/madifx.c
+-index b6e4b54..336350e 100644
+---- a/madifx.c
+-+++ b/madifx.c
+-@@ -458,9 +458,9 @@ static DEFINE_PCI_DEVICE_TABLE(snd_madifx_ids) = {
+- MODULE_DEVICE_TABLE(pci, snd_madifx_ids);
+- 
+- /* prototypes */
+--static int snd_madifx_create_alsa_devices(struct snd_card *card,
+-+static int __devinit snd_madifx_create_alsa_devices(struct snd_card *card,
+- 						   struct hdspm *hdspm);
+--static int snd_madifx_create_pcm(struct snd_card *card,
+-+static int __devinit snd_madifx_create_pcm(struct snd_card *card,
+- 					  struct hdspm *hdspm);
+- 
+- static inline void snd_madifx_initialize_midi_flush(struct hdspm *hdspm);
+-@@ -1132,7 +1132,7 @@ static struct snd_rawmidi_ops snd_madifx_midi_input = {
+- 	.trigger =	snd_madifx_midi_input_trigger,
+- };
+- 
+--static int snd_madifx_create_midi(struct snd_card *card,
+-+static int __devinit snd_madifx_create_midi(struct snd_card *card,
+- 					    struct hdspm *hdspm, int id)
+- {
+- 	int err;
+-@@ -2381,7 +2381,7 @@ static void snd_madifx_proc_ports_out(struct snd_info_entry *entry,
+- #endif
+- 
+- 
+--static void snd_madifx_proc_init(struct hdspm *hdspm)
+-+static void __devinit snd_madifx_proc_init(struct hdspm *hdspm)
+- {
+- 	struct snd_info_entry *entry;
+- 
+-@@ -3520,7 +3520,7 @@ static struct snd_pcm_ops snd_madifx_capture_ops = {
+- 	.page = snd_pcm_sgbuf_ops_page,
+- };
+- 
+--static int snd_madifx_create_hwdep(struct snd_card *card,
+-+static int __devinit snd_madifx_create_hwdep(struct snd_card *card,
+- 					    struct hdspm *hdspm)
+- {
+- 	struct snd_hwdep *hw;
+-@@ -3546,7 +3546,7 @@ static int snd_madifx_create_hwdep(struct snd_card *card,
+- /*------------------------------------------------------------
+-    memory interface
+-  ------------------------------------------------------------*/
+--static int snd_madifx_preallocate_memory(struct hdspm *hdspm)
+-+static int __devinit snd_madifx_preallocate_memory(struct hdspm *hdspm)
+- {
+- 	int err;
+- #ifdef CONFIG_SND_MADIFX_BROKEN
+-@@ -3622,7 +3622,7 @@ static int snd_madifx_preallocate_memory(struct hdspm *hdspm)
+- 
+- 
+- /* ------------- ALSA Devices ---------------------------- */
+--static int snd_madifx_create_pcm(struct snd_card *card,
+-+static int __devinit snd_madifx_create_pcm(struct snd_card *card,
+- 					  struct hdspm *hdspm)
+- {
+- 	struct snd_pcm *pcm;
+-@@ -3658,7 +3658,7 @@ static inline void snd_madifx_initialize_midi_flush(struct hdspm *hdspm)
+- 		snd_madifx_flush_midi_input(hdspm, i);
+- }
+- 
+--static int snd_madifx_create_alsa_devices(struct snd_card *card,
+-+static int __devinit snd_madifx_create_alsa_devices(struct snd_card *card,
+- 						   struct hdspm *hdspm)
+- {
+- 	int err, i;
+-@@ -3719,7 +3719,7 @@ static int snd_madifx_create_alsa_devices(struct snd_card *card,
+- 	return 0;
+- }
+- 
+--static int snd_madifx_create(struct snd_card *card,
+-+static int __devinit snd_madifx_create(struct snd_card *card,
+- 		struct hdspm *hdspm) {
+- 
+- 	struct pci_dev *pci = hdspm->pci;
+-@@ -3921,7 +3921,7 @@ static void snd_madifx_card_free(struct snd_card *card)
+- }
+- 
+- 
+--static int snd_madifx_probe(struct pci_dev *pci,
+-+static int __devinit snd_madifx_probe(struct pci_dev *pci,
+- 				     const struct pci_device_id *pci_id)
+- {
+- 	static int dev;
+-@@ -3976,7 +3976,7 @@ static int snd_madifx_probe(struct pci_dev *pci,
+- 	return 0;
+- }
+- 
+--static void snd_madifx_remove(struct pci_dev *pci)
+-+static void __devexit snd_madifx_remove(struct pci_dev *pci)
+- {
+- 	snd_card_free(pci_get_drvdata(pci));
+- 	pci_set_drvdata(pci, NULL);
+-@@ -3986,7 +3986,7 @@ static struct pci_driver madifx_driver = {
+- 	.name = KBUILD_MODNAME,
+- 	.id_table = snd_madifx_ids,
+- 	.probe = snd_madifx_probe,
+--	.remove = snd_madifx_remove,
+-+	.remove = __devexit_p(snd_madifx_remove),
+- };
+- 
+- module_pci_driver(madifx_driver);
 diff --git a/madifx.c b/madifx.c
-index b6e4b54..336350e 100644
+index 12727d3..2b90e5c 100644
 --- a/madifx.c
 +++ b/madifx.c
 @@ -458,9 +458,9 @@ static DEFINE_PCI_DEVICE_TABLE(snd_madifx_ids) = {
@@ -23,7 +134,7 @@ index b6e4b54..336350e 100644
  					    struct hdspm *hdspm, int id)
  {
  	int err;
-@@ -2381,7 +2381,7 @@ static void snd_madifx_proc_ports_out(struct snd_info_entry *entry,
+@@ -2394,7 +2394,7 @@ static void snd_madifx_proc_ports_out(struct snd_info_entry *entry,
  #endif
  
  
@@ -32,7 +143,7 @@ index b6e4b54..336350e 100644
  {
  	struct snd_info_entry *entry;
  
-@@ -3520,7 +3520,7 @@ static struct snd_pcm_ops snd_madifx_capture_ops = {
+@@ -3533,7 +3533,7 @@ static struct snd_pcm_ops snd_madifx_capture_ops = {
  	.page = snd_pcm_sgbuf_ops_page,
  };
  
@@ -41,7 +152,7 @@ index b6e4b54..336350e 100644
  					    struct hdspm *hdspm)
  {
  	struct snd_hwdep *hw;
-@@ -3546,7 +3546,7 @@ static int snd_madifx_create_hwdep(struct snd_card *card,
+@@ -3559,7 +3559,7 @@ static int snd_madifx_create_hwdep(struct snd_card *card,
  /*------------------------------------------------------------
     memory interface
   ------------------------------------------------------------*/
@@ -50,7 +161,7 @@ index b6e4b54..336350e 100644
  {
  	int err;
  #ifdef CONFIG_SND_MADIFX_BROKEN
-@@ -3622,7 +3622,7 @@ static int snd_madifx_preallocate_memory(struct hdspm *hdspm)
+@@ -3635,7 +3635,7 @@ static int snd_madifx_preallocate_memory(struct hdspm *hdspm)
  
  
  /* ------------- ALSA Devices ---------------------------- */
@@ -59,7 +170,7 @@ index b6e4b54..336350e 100644
  					  struct hdspm *hdspm)
  {
  	struct snd_pcm *pcm;
-@@ -3658,7 +3658,7 @@ static inline void snd_madifx_initialize_midi_flush(struct hdspm *hdspm)
+@@ -3671,7 +3671,7 @@ static inline void snd_madifx_initialize_midi_flush(struct hdspm *hdspm)
  		snd_madifx_flush_midi_input(hdspm, i);
  }
  
@@ -68,7 +179,7 @@ index b6e4b54..336350e 100644
  						   struct hdspm *hdspm)
  {
  	int err, i;
-@@ -3719,7 +3719,7 @@ static int snd_madifx_create_alsa_devices(struct snd_card *card,
+@@ -3732,7 +3732,7 @@ static int snd_madifx_create_alsa_devices(struct snd_card *card,
  	return 0;
  }
  
@@ -77,7 +188,7 @@ index b6e4b54..336350e 100644
  		struct hdspm *hdspm) {
  
  	struct pci_dev *pci = hdspm->pci;
-@@ -3921,7 +3921,7 @@ static void snd_madifx_card_free(struct snd_card *card)
+@@ -3934,7 +3934,7 @@ static void snd_madifx_card_free(struct snd_card *card)
  }
  
  
@@ -86,7 +197,7 @@ index b6e4b54..336350e 100644
  				     const struct pci_device_id *pci_id)
  {
  	static int dev;
-@@ -3976,7 +3976,7 @@ static int snd_madifx_probe(struct pci_dev *pci,
+@@ -3989,7 +3989,7 @@ static int snd_madifx_probe(struct pci_dev *pci,
  	return 0;
  }
  
@@ -95,7 +206,7 @@ index b6e4b54..336350e 100644
  {
  	snd_card_free(pci_get_drvdata(pci));
  	pci_set_drvdata(pci, NULL);
-@@ -3986,7 +3986,7 @@ static struct pci_driver madifx_driver = {
+@@ -3999,7 +3999,7 @@ static struct pci_driver madifx_driver = {
  	.name = KBUILD_MODNAME,
  	.id_table = snd_madifx_ids,
  	.probe = snd_madifx_probe,
