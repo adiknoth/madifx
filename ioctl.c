@@ -1,4 +1,4 @@
-/* compile with gcc -o madifx_testtool ioctl.c -lasound */
+/* compile with gcc -DCONFIG_SND_MADIFX_BROKEN -o madifx_testtool ioctl.c -lasound */
 #include <stdio.h>
 #include <sys/ioctl.h>
 #include <alsa/asoundlib.h>
