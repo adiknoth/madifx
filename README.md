@@ -45,6 +45,7 @@ Status
  * MIDI probably working (untested)
  * All card settings working (e.g. TX64, SMUX, AESpro, WC-Term,
    WC-singlespeed...)
+ * Slave Mode/External clock selection **broken** (fix is in the works)
  * Mirror-MADI1-to-Out2+3 maybe working (untested)
  * Redundancy mode maybe working (untested)
  * ioctls implemented (see ioctl.c)
