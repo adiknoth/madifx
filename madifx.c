@@ -1993,7 +1993,7 @@ static int snd_madifx_info_sync_check(struct snd_kcontrol *kcontrol,
 }
 
 
-static int madifx_sync_check(struct hdspm *hdspm, int idx)
+static int madifx_sync_check(struct hdspm *hdspm, enum madifx_syncsource idx)
 {
 	u32 status, lockmask, syncmask;
 	int lock, sync;
@@ -2001,17 +2001,17 @@ static int madifx_sync_check(struct hdspm *hdspm, int idx)
 	status = madifx_read(hdspm, MADIFX_RD_INP_STATUS);
 
 	switch (idx) {
-	case 5:
+	case syncsource_syncin:
 		/* Sync-In */
 		lockmask = MADIFX_sync_in_lock;
 		syncmask = MADIFX_sync_in_sync;
 		break;
-	case 4:
+	case syncsource_aes:
 		/* AES */
 		lockmask = MADIFX_aes_lock;
 		syncmask = MADIFX_aes_sync;
 		break;
-	case 3:
+	case syncsource_wc:
 		/* WC */
 		lockmask = MADIFX_word_lock;
 		syncmask = MADIFX_word_sync;
@@ -2059,16 +2059,18 @@ static int snd_madifx_get_sync_check(struct snd_kcontrol *kcontrol,
 static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 	HDSPM_SYSTEM_SAMPLE_RATE("System Sample Rate", 0),
 	HDSPM_INTERNAL_CLOCK("Internal Clock", 0),
-	HDSPM_SYNC_CHECK("MADI 1 SyncCheck", 0),
-	HDSPM_SYNC_CHECK("MADI 2 SyncCheck", 1),
-	HDSPM_SYNC_CHECK("MADI 3 SyncCheck", 2),
-	HDSPM_SYNC_CHECK("WC SyncCheck", 3),
-	HDSPM_SYNC_CHECK("AES SyncCheck", 4),
-	HDSPM_AUTOSYNC_SAMPLE_RATE("MADI 1 Frequency", 0),
-	HDSPM_AUTOSYNC_SAMPLE_RATE("MADI 2 Frequency", 1),
-	HDSPM_AUTOSYNC_SAMPLE_RATE("MADI 3 Frequency", 2),
-	HDSPM_AUTOSYNC_SAMPLE_RATE("WC Frequency", 3),
-	HDSPM_AUTOSYNC_SAMPLE_RATE("AES Frequency", 4),
+	HDSPM_SYNC_CHECK("MADI 1 SyncCheck", syncsource_madi1),
+	HDSPM_SYNC_CHECK("MADI 2 SyncCheck", syncsource_madi2),
+	HDSPM_SYNC_CHECK("MADI 3 SyncCheck", syncsource_madi3),
+	HDSPM_SYNC_CHECK("WC SyncCheck", syncsource_wc),
+	HDSPM_SYNC_CHECK("AES SyncCheck", syncsource_aes),
+	HDSPM_SYNC_CHECK("Sync-In SyncCheck", syncsource_syncin),
+	HDSPM_AUTOSYNC_SAMPLE_RATE("MADI 1 Frequency", syncsource_madi1),
+	HDSPM_AUTOSYNC_SAMPLE_RATE("MADI 2 Frequency", syncsource_madi2),
+	HDSPM_AUTOSYNC_SAMPLE_RATE("MADI 3 Frequency", syncsource_madi3),
+	HDSPM_AUTOSYNC_SAMPLE_RATE("WC Frequency", syncsource_wc),
+	HDSPM_AUTOSYNC_SAMPLE_RATE("AES Frequency", syncsource_aes),
+	HDSPM_AUTOSYNC_SAMPLE_RATE("Sync-In Frequency", syncsource_syncin),
 	MADIFX_MADI_CHANNELCOUNT("MADI 1 RX #ch", 0),
 	MADIFX_MADI_CHANNELCOUNT("MADI 2 RX #ch", 1),
 	MADIFX_MADI_CHANNELCOUNT("MADI 3 RX #ch", 2),
