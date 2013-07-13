@@ -119,7 +119,8 @@ enum madifx_clocksource {
 	clock_wc = 2,
 	clock_madi1 = 3,
 	clock_madi2 = 4,
-	clock_madi3 = 5
+	clock_madi3 = 5,
+	clock_syncin = 6
 };
 
 
