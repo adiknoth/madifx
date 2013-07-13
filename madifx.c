@@ -769,7 +769,8 @@ static int madifx_set_rate(struct hdspm *hdspm, int rate, int called_internally)
 
 			if (rate != external_freq) {
 				snd_printk(KERN_WARNING
-				    "MADIFX: Warning: No AutoSync source for requested rate\n");
+				    "MADIFX: Warning: Requested rate %d doesn't match external rate %d\n",
+				    rate, external_freq);
 				not_set = 1;
 			}
 		}
