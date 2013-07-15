@@ -1,8 +1,8 @@
 diff --git a/madifx.c b/madifx.c
-index 2b90e5c..312aec6 100644
+index b9e8c8e..3a92d67 100644
 --- a/madifx.c
 +++ b/madifx.c
-@@ -3995,11 +3995,22 @@ static void __devexit snd_madifx_remove(struct pci_dev *pci)
+@@ -3975,11 +3975,22 @@ static void __devexit snd_madifx_remove(struct pci_dev *pci)
  	pci_set_drvdata(pci, NULL);
  }
  
