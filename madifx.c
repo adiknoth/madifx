@@ -309,7 +309,7 @@ enum {
 /* names for speed modes */
 static char *madifx_speed_names[] = { "single", "double", "quad" };
 
-static char *texts_madifx_clock_source[] = {
+static const char *const texts_madifx_clock_source[] = {
 	"Internal",
 	"Word Clock", /* OSX driver has first AES, then WC, but real HW is
 			 different */
@@ -321,7 +321,7 @@ static char *texts_madifx_clock_source[] = {
 };
 
 
-static char *texts_freq[] = {
+static const char *const texts_freq[] = {
 	"No Lock",
 	"32 kHz",
 	"44.1 kHz",
@@ -427,7 +427,7 @@ struct hdspm {
 	struct madifx_newmixer *newmixer;
 	dma_addr_t *dmaPageTable;
 
-	char **texts_clocksource;
+	const char *const *texts_clocksource;
 	int texts_clocksource_items;
 
 	cycles_t last_interrupt;
@@ -1367,6 +1367,9 @@ static int madifx_external_freq_index(struct hdspm *hdspm, enum madifx_syncsourc
 }
 
 
+#define ENUMERATED_CTL_INFO(info, texts) \
+	snd_ctl_enum_info(info, 1, ARRAY_SIZE(texts), texts)
+
 #define HDSPM_AUTOSYNC_SAMPLE_RATE(xname, xindex) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
 	.name = xname, \
@@ -1380,14 +1383,8 @@ static int madifx_external_freq_index(struct hdspm *hdspm, enum madifx_syncsourc
 static int snd_madifx_info_autosync_sample_rate(struct snd_kcontrol *kcontrol,
 					       struct snd_ctl_elem_info *uinfo)
 {
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
-	uinfo->count = 1;
-	uinfo->value.enumerated.items = 10;
+	ENUMERATED_CTL_INFO(uinfo, texts_freq);
 
-	if (uinfo->value.enumerated.item >= uinfo->value.enumerated.items)
-		uinfo->value.enumerated.item = uinfo->value.enumerated.items - 1;
-	strcpy(uinfo->value.enumerated.name,
-			texts_freq[uinfo->value.enumerated.item]);
 	return 0;
 }
 
@@ -1424,15 +1421,8 @@ static int snd_madifx_get_autosync_sample_rate(struct snd_kcontrol *kcontrol,
 static int snd_madifx_info_channelcount(struct snd_kcontrol *kcontrol,
 					       struct snd_ctl_elem_info *uinfo)
 {
-	static char *texts[] = { "64", "56", "32", "28", "16", "14", "No lock" };
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
-	uinfo->count = 1;
-	uinfo->value.enumerated.items = 7;
-	if (uinfo->value.enumerated.item >= uinfo->value.enumerated.items)
-		uinfo->value.enumerated.item =
-			uinfo->value.enumerated.items - 1;
-	strcpy(uinfo->value.enumerated.name,
-			texts[uinfo->value.enumerated.item]);
+	static const char *const texts[] = { "64", "56", "32", "28", "16", "14", "No lock" };
+	ENUMERATED_CTL_INFO(uinfo, texts);
 
 	return 0;
 }
@@ -1680,16 +1670,8 @@ static int snd_madifx_info_clock_select(struct snd_kcontrol *kcontrol,
 {
 	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
 
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
-	uinfo->count = 1;
-	uinfo->value.enumerated.items = hdspm->texts_clocksource_items;
-
-	if (uinfo->value.enumerated.item >= uinfo->value.enumerated.items)
-		uinfo->value.enumerated.item =
-			uinfo->value.enumerated.items - 1;
-
-	strcpy(uinfo->value.enumerated.name,
-			hdspm->texts_clocksource[uinfo->value.enumerated.item]);
+	snd_ctl_enum_info(uinfo, 1, hdspm->texts_clocksource_items,
+			hdspm->texts_clocksource);
 
 	return 0;
 }
@@ -1983,15 +1965,8 @@ static int snd_madifx_put_playback_mixer(struct snd_kcontrol *kcontrol,
 static int snd_madifx_info_sync_check(struct snd_kcontrol *kcontrol,
 				     struct snd_ctl_elem_info *uinfo)
 {
-	static char *texts[] = { "No Lock", "Lock", "Sync", "N/A" };
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
-	uinfo->count = 1;
-	uinfo->value.enumerated.items = 4;
-	if (uinfo->value.enumerated.item >= uinfo->value.enumerated.items)
-		uinfo->value.enumerated.item =
-			uinfo->value.enumerated.items - 1;
-	strcpy(uinfo->value.enumerated.name,
-			texts[uinfo->value.enumerated.item]);
+	static const char *const texts[] = { "No Lock", "Lock", "Sync", "N/A" };
+	ENUMERATED_CTL_INFO (uinfo, texts);
 	return 0;
 }
 
