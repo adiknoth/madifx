@@ -311,8 +311,9 @@ static char *madifx_speed_names[] = { "single", "double", "quad" };
 
 static char *texts_madifx_clock_source[] = {
 	"Internal",
+	"Word Clock", /* OSX driver has first AES, then WC, but real HW is
+			 different */
 	"AES In",
-	"Word Clock",
 	"MADI 1 In",
 	"MADI 2 In",
 	"MADI 3 In",
@@ -709,16 +710,17 @@ static int madifx_get_external_rate(struct hdspm *hdspm)
 {
 	int current_clock = madifx_get_clock_select(hdspm);
 
+	/* map to enum madifx_syncsource */
 	switch (current_clock) {
 	case 0:
 	case 6:
 		/* Master or Sync-In */
 		break;
 	case 1:
+		current_clock = syncsource_wc;
+		break;
 	case 2:
-		/* 1 == AES, 2 == WC; map to enum madifx_syncsource,
-		 * so that 3 == AES, 4 == WC */
-		current_clock += 2;
+		current_clock = syncsource_aes;
 		break;
 	case 3:
 	case 4:
