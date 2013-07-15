@@ -83,6 +83,11 @@ of the setup.
 Thanks to [RME](http://www.rme-audio.com) for temporarily providing the
 card. Special thanks to Martin Björnsen for the OSX driver source.
 
+Kudos to Marcin Pączkowski from the Center For Digital Arts And
+Experimental Media ([DXARTS](http://www.dxarts.washington.edu/)) for
+setting up remote access and testbeds to further improve the driver.
+
+
 Contact
 -------
 In case of trouble or questions, send me an email:
