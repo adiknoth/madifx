@@ -7,8 +7,8 @@
 
 static char *texts_madifx_clock_source[] = {
 	"Internal",
-	"AES In",
 	"Word Clock",
+	"AES In",
 	"MADI 1 In",
 	"MADI 2 In", 
 	"MADI 3 In",
