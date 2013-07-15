@@ -42,7 +42,7 @@ as root. Use `alsamixer` or `amixer` to adjust settings.
 Status
 ------
  * PCM playback/capture working (SS and DS tested, QS untested)
- * MIDI probably working (untested)
+ * MIDI working
  * All card settings working (e.g. TX64, SMUX, AESpro, WC-Term,
    WC-singlespeed...)
  * Slave Mode/External clock selection working
