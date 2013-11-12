@@ -1,3 +1,4 @@
+KERNEL_VERSION	:= `uname -r`
 ifneq ($(KERNELRELEASE),)
 
 obj-m := madifx.o
@@ -11,16 +12,18 @@ else
 	BROKEN =
 endif
 
+DEBUG_CFLAGS=-g -Wall -Werror
+
 snd-madifx-objs := madifx.o
 
-KDIR   := /lib/modules/$(shell uname -r)/build
+KDIR   := /lib/modules/$(KERNEL_VERSION)/build
 PWD    := $(shell pwd)
-MODDIR := $(DESTDIR)/lib/modules/$(shell uname -r)/kernel/sound/pci/rme9652
+MODDIR := $(DESTDIR)/lib/modules/$(KERNEL_VERSION)/kernel/sound/pci/rme9652
 BINDIR := $(DESTDIR)/usr/local/bin
 INCDIR := $(DESTDIR)/usr/include/alsa/sound
 
 default::
-	$(MAKE) -Wall -Wextra -C $(KDIR) SUBDIRS=$(PWD) EXTRA_CFLAGS="-g ${BROKEN}" modules
+	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) EXTRA_CFLAGS="${DEBUG_CFLAGS} ${BROKEN}" modules
 
 install-only:: default
 	mkdir -p $(MODDIR) $(BINDIR)
