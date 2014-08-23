@@ -23,6 +23,10 @@ Installation
 ------------
 Clone this repository.
 
+For all kernels until 3.14.x, run
+
+   patch -p1 < below315.patch
+
 For all kernels until 3.7.x, run
 
     patch -p1 < below38.patch
