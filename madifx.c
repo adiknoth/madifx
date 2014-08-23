@@ -3938,7 +3938,7 @@ static int snd_madifx_probe(struct pci_dev *pci,
 		return -ENOENT;
 	}
 
-	err = snd_card_create(index[dev], id[dev],
+	err = snd_card_new(&pci->dev, index[dev], id[dev],
 			THIS_MODULE, sizeof(struct hdspm), &card);
 	if (err < 0)
 		return err;
@@ -3947,8 +3947,6 @@ static int snd_madifx_probe(struct pci_dev *pci,
 	card->private_free = snd_madifx_card_free;
 	hdspm->dev = dev;
 	hdspm->pci = pci;
-
-	snd_card_set_dev(card, &pci->dev);
 
 	err = snd_madifx_create(card, hdspm);
 	if (err < 0) {
