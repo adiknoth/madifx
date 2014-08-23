@@ -731,7 +731,8 @@ static int madifx_get_external_rate(struct hdspm *hdspm)
 		current_clock -= 3;
 		break;
 	default:
-		snd_printk(KERN_ERR "MADIFX: Unknown clock source\n");
+		dev_err(hdspm->card->dev,
+				"MADIFX: Unknown clock source\n");
 		return 0;
 	}
 
@@ -761,7 +762,7 @@ static int madifx_set_rate(struct hdspm *hdspm, int rate, int called_internally)
 			   just make a warning an remember setting
 			   for future master mode switching */
 
-			snd_printk(KERN_WARNING
+			dev_warn(hdspm->card->dev,
 				"MADIFX: Warning: device is not running as a clock master.\n");
 			not_set = 1;
 		} else {
@@ -770,7 +771,7 @@ static int madifx_set_rate(struct hdspm *hdspm, int rate, int called_internally)
 
 
 			if (rate != external_freq) {
-				snd_printk(KERN_WARNING
+				dev_warn(hdspm->card->dev,
 				    "MADIFX: Warning: Requested rate %d doesn't match external rate %d\n",
 				    rate, external_freq);
 				not_set = 1;
@@ -838,8 +839,8 @@ static int madifx_set_rate(struct hdspm *hdspm, int rate, int called_internally)
 
 	if (current_speed != target_speed
 	    && (hdspm->capture_pid >= 0 || hdspm->playback_pid >= 0)) {
-		snd_printk
-		    (KERN_ERR "MADIFX: "
+		dev_err
+		    (hdspm->card->dev, "MADIFX: "
 		     "cannot change from %s speed to %s speed mode "
 		     "(capture PID = %d, playback PID = %d)\n",
 		     madifx_speed_names[current_speed],
@@ -1183,7 +1184,8 @@ static int snd_madifx_create_midi(struct snd_card *card,
 		break;
 
 	default:
-		snd_printk(KERN_ERR "MADIFX: Unknown MIDI port %i\n", id);
+		dev_err(hdspm->card->dev,
+				"MADIFX: Unknown MIDI port %i\n", id);
 		return -EINVAL;
 
 	}
@@ -1334,7 +1336,8 @@ static int madifx_external_freq_index(struct hdspm *hdspm, enum madifx_syncsourc
 		freq0_bit = MADIFX_sync_in_freq0;
 		break;
 	default:
-		snd_printk(KERN_ERR "MADIFX: Unknown external port ID %i\n", port);
+		dev_err(hdspm->card->dev,
+				"MADIFX: Unknown external port ID %i\n", port);
 		return 0;
 	}
 
@@ -2074,7 +2077,7 @@ static struct snd_kcontrol_new snd_madifx_playback_mixer = HDSPM_PLAYBACK_MIXER;
 static int madifx_update_simple_mixer_controls(struct hdspm *hdspm)
 {
 	int i;
-	snd_printk(KERN_WARNING "MADIFX: updating broken mixer\n");
+	dev_warn(hdspm->card->dev, "MADIFX: updating broken mixer\n");
 
 	for (i = hdspm->ds_out_channels; i < hdspm->ss_out_channels; ++i) {
 		if (hdspm->system_sample_rate > 48000) {
@@ -2607,7 +2610,7 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 	spin_lock_irq(&hdspm->lock);
 	err = madifx_set_rate(hdspm, params_rate(params), 0);
 	if (err < 0) {
-		snd_printk(KERN_INFO "err on madifx_set_rate: %d\n", err);
+		dev_info(hdspm->card->dev, "err on madifx_set_rate: %d\n", err);
 		spin_unlock_irq(&hdspm->lock);
 		_snd_pcm_hw_param_setempty(params,
 				SNDRV_PCM_HW_PARAM_RATE);
@@ -2618,7 +2621,8 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 	err = madifx_set_interrupt_interval(hdspm,
 			params_period_size(params));
 	if (err < 0) {
-		snd_printk(KERN_INFO "err on madifx_set_interrupt_interval: %d\n", err);
+		dev_info(hdspm->card->dev,
+			"err on madifx_set_interrupt_interval: %d\n", err);
 		_snd_pcm_hw_param_setempty(params,
 				SNDRV_PCM_HW_PARAM_PERIOD_SIZE);
 		return err;
@@ -2640,7 +2644,8 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 
 		err = snd_pcm_lib_malloc_pages(substream, wanted);
 		if (err < 0) {
-			snd_printk(KERN_INFO "err on snd_pcm_lib_malloc_pages: %d\n", err);
+			dev_info(hdspm->card->dev,
+			    "err on snd_pcm_lib_malloc_pages: %d\n", err);
 			return err;
 		}
 	}
@@ -2721,12 +2726,14 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 	/* Switch to native float format if requested */
 	if (SNDRV_PCM_FORMAT_FLOAT_LE == params_format(params)) {
 		if (!(hdspm->control_register & MADIFX_float_format))
-			snd_printk(KERN_INFO "hdspm: Switching to native 32bit LE float format.\n");
+			dev_info(hdspm->card->dev,
+				"hdspm: Switching to native 32bit LE float format.\n");
 
 		hdspm->control_register |= MADIFX_float_format;
 	} else if (SNDRV_PCM_FORMAT_S32_LE == params_format(params)) {
 		if (hdspm->control_register & MADIFX_float_format)
-			snd_printk(KERN_INFO "hdspm: Switching to native 32bit LE integer format.\n");
+			dev_info(hdspm->card->dev,
+				"hdspm: Switching to native 32bit LE integer format.\n");
 
 		hdspm->control_register &= ~MADIFX_float_format;
 	}
@@ -2771,7 +2778,7 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 		int last_madi_channel = 193;
 
 		if (snd_BUG_ON(info->channel >= hdspm->max_channels_out)) {
-			snd_printk(KERN_INFO
+			dev_info(hdspm->card->dev,
 				"snd_madifx_channel_info: output channel out of range (%d)\n",
 				info->channel);
 			return -EINVAL;
@@ -2827,7 +2834,7 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 	    64 : 256;
 	} else {
 		if (snd_BUG_ON(info->channel >= hdspm->max_channels_in)) {
-			snd_printk(KERN_INFO
+			dev_info(hdspm->card->dev,
 				"snd_madifx_channel_info: input channel out of range (%d)\n",
 					info->channel);
 			return -EINVAL;
@@ -3559,8 +3566,8 @@ static int snd_madifx_preallocate_memory(struct hdspm *hdspm)
 			MADIFX_MAX_PAGE_TABLE_SIZE, GFP_KERNEL);
 
 	if (!hdspm->dmaPageTable) {
-		snd_printk(KERN_ERR
-				"MADIFX: unable to kmalloc dmaPageTable memory\n");
+		dev_err(hdspm->card->dev,
+			"MADIFX: unable to kmalloc dmaPageTable memory\n");
 		return -ENOMEM;
 	}
 
@@ -3583,8 +3590,8 @@ static int snd_madifx_preallocate_memory(struct hdspm *hdspm)
 			snd_dma_pci_data(hdspm->pci),
 			MADIFX_LEVEL_BUFFER_SIZE, &hdspm->dmaLevelBuffer);
 	if (err < 0) {
-		snd_printk(KERN_ERR
-				"MADIFX: Unable to allocate DMA level buffer\n");
+		dev_err(hdspm->card->dev,
+			"MADIFX: Unable to allocate DMA level buffer\n");
 		return -ENOMEM;
 	}
 
@@ -3703,7 +3710,8 @@ static int snd_madifx_create_alsa_devices(struct snd_card *card,
 
 	err = snd_card_register(card);
 	if (err < 0) {
-		snd_printk(KERN_ERR "MADIFX: error registering card\n");
+		dev_err(hdspm->card->dev,
+			    "MADIFX: error registering card\n");
 		return err;
 	}
 
@@ -3737,9 +3745,9 @@ static int snd_madifx_create(struct snd_card *card,
 		hdspm->midiPorts = 4;
 		break;
 	default:
-		snd_printk(KERN_ERR
-				"MADIFX: unknown firmware revision %x\n",
-				hdspm->firmware_rev);
+		dev_err(hdspm->card->dev,
+			"MADIFX: unknown firmware revision %x\n",
+			hdspm->firmware_rev);
 		return -ENODEV;
 	}
 
@@ -3761,8 +3769,8 @@ static int snd_madifx_create(struct snd_card *card,
 
 	hdspm->iobase = ioremap_nocache(hdspm->port, io_extent);
 	if (!hdspm->iobase) {
-		snd_printk(KERN_ERR
-				"MADIFX: unable to remap region 0x%lx-0x%lx\n",
+		dev_err(hdspm->card->dev,
+			"MADIFX: unable to remap region 0x%lx-0x%lx\n",
 				hdspm->port, hdspm->port + io_extent - 1);
 		return -EBUSY;
 	}
@@ -3772,7 +3780,8 @@ static int snd_madifx_create(struct snd_card *card,
 
 	if (request_irq(pci->irq, snd_madifx_interrupt,
 			IRQF_SHARED, KBUILD_MODNAME, hdspm)) {
-		snd_printk(KERN_ERR "MADIFX: unable to use IRQ %d\n", pci->irq);
+		dev_err(hdspm->card->dev,
+			"MADIFX: unable to use IRQ %d\n", pci->irq);
 		return -EBUSY;
 	}
 
@@ -3785,9 +3794,9 @@ static int snd_madifx_create(struct snd_card *card,
 
 	hdspm->newmixer = kzalloc(sizeof(struct madifx_newmixer), GFP_KERNEL);
 	if (!hdspm->newmixer) {
-		snd_printk(KERN_ERR
-				"MADIFX: unable to kmalloc Mixer memory of %d Bytes\n",
-				(int)sizeof(struct madifx_newmixer));
+		dev_err(hdspm->card->dev,
+			"MADIFX: unable to kmalloc Mixer memory of %d Bytes\n",
+			(int)sizeof(struct madifx_newmixer));
 		return -ENOMEM;
 	}
 
