@@ -3611,7 +3611,7 @@ static int snd_madifx_preallocate_memory(struct hdspm *hdspm)
 				levelPageTable[i]);
 	}
 
-	hdspm->level_buffer = (u32*)hdspm->dmaLevelBuffer.area;
+	hdspm->level_buffer = (u32 *)hdspm->dmaLevelBuffer.area;
 
 	memset(hdspm->level_buffer, 0, MADIFX_LEVEL_BUFFER_SIZE);
 #endif /* MADFIX_BROKEN */
