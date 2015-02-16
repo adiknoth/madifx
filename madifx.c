@@ -1238,10 +1238,10 @@ static void madifx_midi_tasklet(unsigned long arg)
 /* get the system sample rate which is set */
 
 
-/**
+/*
  * Calculate the real sample rate from the
  * current DDS value.
- **/
+ */
 static int madifx_get_system_sample_rate(struct hdspm *hdspm)
 {
 	unsigned int period, rate;
@@ -1478,10 +1478,10 @@ static int snd_madifx_get_channelcount(struct snd_kcontrol *kcontrol,
 
 
 
-/**
+/*
  * Returns the system clock mode for the given card.
  * @returns 0 - master, 1 - slave
- **/
+ */
 static int madifx_system_clock_mode(struct hdspm *hdspm)
 {
 	u32 status;
@@ -2462,7 +2462,7 @@ static irqreturn_t snd_madifx_interrupt(int irq, void *dev_id)
 			MADIFX_mIRQ2 | MADIFX_mIRQ3);
 
 	/* now = get_cycles(); */
-	/**
+	/*
 	 *   LAT_2..LAT_0 period  counter (win)  counter (mac)
 	 *          6       4096   ~256053425     ~514672358
 	 *          5       2048   ~128024983     ~257373821
@@ -2471,7 +2471,7 @@ static irqreturn_t snd_madifx_interrupt(int irq, void *dev_id)
 	 *          2        256    ~16003039      ~32260176
 	 *          1        128     ~7998738      ~16194507
 	 *          0         64     ~3998231       ~8191558
-	 **/
+	 */
 	/*
 	   snd_printk(KERN_INFO "snd_madifx_interrupt %llu @ %llx\n",
 	   now-hdspm->last_interrupt, status & 0xFFC0);
