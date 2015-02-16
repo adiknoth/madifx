@@ -3903,8 +3903,7 @@ static int snd_madifx_free(struct hdspm *hdspm)
 	snd_dma_free_pages(&(hdspm->dmaLevelBuffer));
 #endif
 
-	if (hdspm->iobase)
-		iounmap(hdspm->iobase);
+	iounmap(hdspm->iobase);
 
 	if (hdspm->port)
 		pci_release_regions(hdspm->pci);
