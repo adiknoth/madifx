@@ -20,10 +20,6 @@
  *   with this program; if not, write to the Free Foundation, Inc., 51 Franklin
  *   Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
-/* Maximum channels is 64 even on 56Mode you have 64playbacks to matrix */
-#define HDSPM_MAX_CHANNELS      196
-
 enum madifx_io_type {
 	MADIFX
 };
@@ -148,7 +144,6 @@ struct madifx_status {
 /* We don't know too much about the new mixer, yet. See madifx.c for the bits
  * we already have.
  */
-#define HDSPM_MIXER_CHANNELS HDSPM_MAX_CHANNELS
 #define MADIFX_LIST_LENGTH 4096
 #define MADIFX_NUM_OUTPUT_GAINS 198
 #define MADIFX_NUM_LEVEL_PAGES 5

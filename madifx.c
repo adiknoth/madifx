@@ -67,11 +67,6 @@ MODULE_DESCRIPTION("RME MADIFX");
 MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 
-/* New mixer support is still work in progress. All references to the old
- * mixer are disabled but shipped nevertheless to ease hacking.
- */
-#define OLD_MIXER   0
-
 /* --- Write registers. ---
   These are defined as byte-offsets from the iobase value.  */
 
@@ -417,12 +412,6 @@ struct hdspm {
 	struct pci_dev *pci;	/* and an pci info */
 
 	/* Mixer vars */
-#if OLD_MIXER
-	/* fast alsa mixer */
-	struct snd_kcontrol *playback_mixer_ctls[HDSPM_MAX_CHANNELS];
-	/* but input to much, so not used */
-	struct snd_kcontrol *input_mixer_ctls[HDSPM_MAX_CHANNELS];
-#endif /* OLD_MIXER */
 	/* full mixer accessible over mixer ioctl or hwdep-device */
 	struct madifx_newmixer *newmixer;
 	dma_addr_t *dmaPageTable;
@@ -493,56 +482,6 @@ static inline unsigned int madifx_read(struct hdspm *hdspm, unsigned int reg)
 {
 	return readl(hdspm->iobase + reg);
 }
-
-#if OLD_MIXER
-/* for each output channel (chan) I have an Input (in) and Playback (pb) Fader
-   mixer is write only on hardware so we have to cache him for read
-   each fader is a u32, but uses only the first 16 bit */
-
-static inline int madifx_read_in_gain(struct hdspm *hdspm, unsigned int chan,
-				     unsigned int in)
-{
-	if (chan >= HDSPM_MIXER_CHANNELS || in >= HDSPM_MIXER_CHANNELS)
-		return 0;
-
-	return hdspm->mixer->ch[chan].in[in];
-}
-
-static inline int madifx_read_pb_gain(struct hdspm *hdspm, unsigned int chan,
-				     unsigned int pb)
-{
-	if (chan >= HDSPM_MIXER_CHANNELS || pb >= HDSPM_MIXER_CHANNELS)
-		return 0;
-	return hdspm->mixer->ch[chan].pb[pb];
-}
-
-static int madifx_write_in_gain(struct hdspm *hdspm, unsigned int chan,
-				      unsigned int in, unsigned short data)
-{
-	if (chan >= HDSPM_MIXER_CHANNELS || in >= HDSPM_MIXER_CHANNELS)
-		return -1;
-
-	madifx_write(hdspm,
-		    HDSPM_MADI_mixerBase +
-		    ((in + 128 * chan) * sizeof(u32)),
-		    (hdspm->mixer->ch[chan].in[in] = data & 0xFFFF));
-	return 0;
-}
-
-static int madifx_write_pb_gain(struct hdspm *hdspm, unsigned int chan,
-				      unsigned int pb, unsigned short data)
-{
-	if (chan >= HDSPM_MIXER_CHANNELS || pb >= HDSPM_MIXER_CHANNELS)
-		return -1;
-
-	madifx_write(hdspm,
-		    HDSPM_MADI_mixerBase +
-		    ((64 + pb + 128 * chan) * sizeof(u32)),
-		    (hdspm->mixer->ch[chan].pb[pb] = data & 0xFFFF));
-	return 0;
-}
-#endif /* OLD_MIXER */
-
 
 /* enable DMA for specific channels, now available for DSP-MADI */
 static inline void snd_madifx_enable_in(struct hdspm *hdspm, int i, int v)
@@ -1775,171 +1714,6 @@ static int snd_madifx_put_toggle_setting(struct snd_kcontrol *kcontrol,
 	.put = snd_madifx_put_mixer \
 }
 
-#if OLD_MIXER
-static int snd_madifx_info_mixer(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_info *uinfo)
-{
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-	uinfo->count = 3;
-	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = 65535;
-	uinfo->value.integer.step = 1;
-	return 0;
-}
-
-static int snd_madifx_get_mixer(struct snd_kcontrol *kcontrol,
-			       struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-	int source;
-	int destination;
-
-	source = ucontrol->value.integer.value[0];
-	if (source < 0)
-		source = 0;
-	else if (source >= 2 * HDSPM_MAX_CHANNELS)
-		source = 2 * HDSPM_MAX_CHANNELS - 1;
-
-	destination = ucontrol->value.integer.value[1];
-	if (destination < 0)
-		destination = 0;
-	else if (destination >= HDSPM_MAX_CHANNELS)
-		destination = HDSPM_MAX_CHANNELS - 1;
-
-	spin_lock_irq(&hdspm->lock);
-	if (source >= HDSPM_MAX_CHANNELS)
-		ucontrol->value.integer.value[2] =
-		    madifx_read_pb_gain(hdspm, destination,
-				       source - HDSPM_MAX_CHANNELS);
-	else
-		ucontrol->value.integer.value[2] =
-		    madifx_read_in_gain(hdspm, destination, source);
-
-	spin_unlock_irq(&hdspm->lock);
-
-	return 0;
-}
-
-static int snd_madifx_put_mixer(struct snd_kcontrol *kcontrol,
-			       struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-	int change;
-	int source;
-	int destination;
-	int gain;
-
-	if (!snd_madifx_use_is_exclusive(hdspm))
-		return -EBUSY;
-
-	source = ucontrol->value.integer.value[0];
-	destination = ucontrol->value.integer.value[1];
-
-	if (source < 0 || source >= 2 * HDSPM_MAX_CHANNELS)
-		return -1;
-	if (destination < 0 || destination >= HDSPM_MAX_CHANNELS)
-		return -1;
-
-	gain = ucontrol->value.integer.value[2];
-
-	spin_lock_irq(&hdspm->lock);
-
-	if (source >= HDSPM_MAX_CHANNELS)
-		change = gain != madifx_read_pb_gain(hdspm, destination,
-						    source -
-						    HDSPM_MAX_CHANNELS);
-	else
-		change = gain != madifx_read_in_gain(hdspm, destination,
-						    source);
-
-	if (change) {
-		if (source >= HDSPM_MAX_CHANNELS)
-			madifx_write_pb_gain(hdspm, destination,
-					    source - HDSPM_MAX_CHANNELS,
-					    gain);
-		else
-			madifx_write_in_gain(hdspm, destination, source,
-					    gain);
-	}
-	spin_unlock_irq(&hdspm->lock);
-
-	return change;
-}
-
-/* The simple mixer control(s) provide gain control for the
-   basic 1:1 mappings of playback streams to output
-   streams.
-*/
-
-#define HDSPM_PLAYBACK_MIXER \
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
-	.access = SNDRV_CTL_ELEM_ACCESS_READ | SNDRV_CTL_ELEM_ACCESS_WRITE | \
-		SNDRV_CTL_ELEM_ACCESS_VOLATILE, \
-	.info = snd_madifx_info_playback_mixer, \
-	.get = snd_madifx_get_playback_mixer, \
-	.put = snd_madifx_put_playback_mixer \
-}
-
-static int snd_madifx_info_playback_mixer(struct snd_kcontrol *kcontrol,
-					 struct snd_ctl_elem_info *uinfo)
-{
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-	uinfo->count = 1;
-	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = 64;
-	uinfo->value.integer.step = 1;
-	return 0;
-}
-
-static int snd_madifx_get_playback_mixer(struct snd_kcontrol *kcontrol,
-					struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-	int channel;
-
-	channel = ucontrol->id.index - 1;
-
-	if (snd_BUG_ON(channel < 0 || channel >= HDSPM_MAX_CHANNELS))
-		return -EINVAL;
-
-	spin_lock_irq(&hdspm->lock);
-	ucontrol->value.integer.value[0] =
-	  (madifx_read_pb_gain(hdspm, channel, channel)*64)/UNITY_GAIN;
-	spin_unlock_irq(&hdspm->lock);
-
-	return 0;
-}
-
-static int snd_madifx_put_playback_mixer(struct snd_kcontrol *kcontrol,
-					struct snd_ctl_elem_value *ucontrol)
-{
-	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
-	int change;
-	int channel;
-	int gain;
-
-	if (!snd_madifx_use_is_exclusive(hdspm))
-		return -EBUSY;
-
-	channel = ucontrol->id.index - 1;
-
-	if (snd_BUG_ON(channel < 0 || channel >= HDSPM_MAX_CHANNELS))
-		return -EINVAL;
-
-	gain = ucontrol->value.integer.value[0]*UNITY_GAIN/64;
-
-	spin_lock_irq(&hdspm->lock);
-	change =
-	    gain != madifx_read_pb_gain(hdspm, channel,
-				       channel);
-	if (change)
-		madifx_write_pb_gain(hdspm, channel, channel,
-				    gain);
-	spin_unlock_irq(&hdspm->lock);
-	return change;
-}
-#endif /* OLD_MIXER */
-
 #define HDSPM_SYNC_CHECK(xname, xindex) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
 	.name = xname, \
@@ -2053,36 +1827,6 @@ static struct snd_kcontrol_new snd_madifx_controls_madi[] = {
 	MADIFX_TOGGLE_SETTING("Mirror MADI out", MADIFX_mirror_madi_out),
 	MADIFX_CLOCK_SELECT("Clock Selection", 0)
 };
-
-
-#if OLD_MIXER
-static struct snd_kcontrol_new snd_madifx_playback_mixer = HDSPM_PLAYBACK_MIXER;
-
-
-static int madifx_update_simple_mixer_controls(struct hdspm *hdspm)
-{
-	int i;
-	dev_warn(hdspm->card->dev, "MADIFX: updating broken mixer\n");
-
-	for (i = hdspm->ds_out_channels; i < hdspm->ss_out_channels; ++i) {
-		if (hdspm->system_sample_rate > 48000) {
-			hdspm->playback_mixer_ctls[i]->vd[0].access =
-				SNDRV_CTL_ELEM_ACCESS_INACTIVE |
-				SNDRV_CTL_ELEM_ACCESS_READ |
-				SNDRV_CTL_ELEM_ACCESS_VOLATILE;
-		} else {
-			hdspm->playback_mixer_ctls[i]->vd[0].access =
-				SNDRV_CTL_ELEM_ACCESS_READWRITE |
-				SNDRV_CTL_ELEM_ACCESS_VOLATILE;
-		}
-		snd_ctl_notify(hdspm->card, SNDRV_CTL_EVENT_MASK_VALUE |
-				SNDRV_CTL_EVENT_MASK_INFO,
-				&hdspm->playback_mixer_ctls[i]->id);
-	}
-
-	return 0;
-}
-#endif
 
 
 static int snd_madifx_create_controls(struct snd_card *card,
