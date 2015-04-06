@@ -3210,7 +3210,7 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 		break;
 
 #ifdef CONFIG_SND_MADIFX_BROKEN
-	case SNDRV_HDSPM_IOCTL_GET_MIXER:
+	case SNDRV_MADIFX_IOCTL_GET_MIXER:
 		if (copy_from_user(&mixer, argp, sizeof(mixer)))
 			return -EFAULT;
 		if (copy_to_user((void __user *)mixer.mixer, hdspm->newmixer,

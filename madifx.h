@@ -162,7 +162,7 @@ struct madifx_mixer_ioctl {
 
 #ifdef CONFIG_SND_MADIFX_BROKEN
 /* use indirect access due to the limit of ioctl bit size */
-#define SNDRV_HDSPM_IOCTL_GET_MIXER _IOR('H', 0x44, struct madifx_mixer_ioctl)
+#define SNDRV_MADIFX_IOCTL_GET_MIXER _IOR('H', 0x44, struct madifx_mixer_ioctl)
 #endif
 
 /* typedefs for compatibility to user-space */
