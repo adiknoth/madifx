@@ -1,7 +1,8 @@
 #ifndef __SOUND_MADIFX_H
 #define __SOUND_MADIFX_H
 /*
- *   Copyright (C) 2003 Winfried Ritsch (IEM)
+ *   Copyright (C) 2012 Adrian Knoth
+ *   based on hdspm.h from Winfried Ritsch (IEM)
  *   based on hdsp.h from Thomas Charbonnel (thomas@undata.org)
  *
  *
@@ -15,9 +16,9 @@
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   You should have received a copy of the GNU General Public License along
+ *   with this program; if not, write to the Free Foundation, Inc., 51 Franklin
+ *   Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
 /* Maximum channels is 64 even on 56Mode you have 64playbacks to matrix */
@@ -125,12 +126,17 @@ enum madifx_clocksource {
 
 
 struct madifx_status {
-	uint8_t card_type; /* enum madifx_io_type */
-	uint8_t clock_selection; /* enum madi_clocksource */
+	/* enum madifx_io_type */
+	uint8_t card_type;
+	/* enum madi_clocksource */
+	uint8_t clock_selection;
 	uint32_t system_sample_rate;
-	uint8_t madi_channelcount[3]; /* enum madifx_madi_channel_format */
-	uint32_t external_sample_rates[6]; /* enum madifx_syncsource */
-	uint8_t sync_check[6]; /* enum madifx_sync, array idx: enum madifx_syncsource */
+	/* enum madifx_madi_channel_format */
+	uint8_t madi_channelcount[3];
+	/* enum madifx_syncsource */
+	uint32_t external_sample_rates[6];
+	/* enum madifx_sync, idx: enum madifx_syncsource */
+	uint8_t sync_check[6];
 };
 
 #define SNDRV_MADIFX_IOCTL_GET_STATUS \
