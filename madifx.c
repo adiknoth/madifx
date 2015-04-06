@@ -2,6 +2,7 @@
  *   ALSA driver for RME Hammerfall DSP MADI FX audio interface(s)
  *
  *      Based on hdspm.c
+ *      Copyright (c) 2012-2015 Adrian Knoth <aknoth@google.com>
  *      Copyright (c) 2003 Winfried Ritsch (IEM)
  *      code based on hdsp.c   Paul Davis
  *                             Marcus Andersson
