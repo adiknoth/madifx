@@ -45,9 +45,10 @@
 
 #include "madifx.h"
 
-static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	  /* Index 0-MAX */
-static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	  /* ID for this card */
-static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;/* Enable this card */
+static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX; /* Index 0-MAX */
+static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR; /* ID for this card */
+/* Enable this card */
+static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;
 
 module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for RME MADIFX interface.");
@@ -105,7 +106,10 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define MADIFX_RD_INP_STATUS	(1*4)
 #define MADIFX_RD_INP_FREQ	(2*4)
 #define MADIFX_RD_PLL_FREQ	(3*4)
-#define MADIFX_RD_VERSION	(4*4) /* card_type(7..0) & "0000" & build(19..0) */
+/* MADIFX_RD_VERSION is encoded as
+ * card_type(7..0) & "0000" & build(19..0)
+ */
+#define MADIFX_RD_VERSION	(4*4)
 #define MADIFX_RD_FLASH		(5*4)
 #define MADIFX_RD_BARCODE0	(6*4)
 #define MADIFX_RD_BARCODE1	(7*4)
@@ -172,19 +176,20 @@ MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 #define MADIFX_CLR_TMS		0x00040000
 #define MADIFX_Dolby		0x00080000
 
-#define MADIFX_kFrequencyMask	(MADIFX_freq0 + MADIFX_freq1 + MADIFX_freq2 + MADIFX_freq3)
+#define MADIFX_kFrequencyMask \
+		(MADIFX_freq0 + MADIFX_freq1 + MADIFX_freq2 + MADIFX_freq3)
 #define MADIFX_kBufferPositionMask	0xFFF0
 
 enum {
-	MADIFX_kFrequency32kHz		= 0,
-	MADIFX_kFrequency44_1kHz	= MADIFX_freq0,
-	MADIFX_kFrequency48kHz		= MADIFX_freq1,
-	MADIFX_kFrequency64kHz		= MADIFX_freq2 + 0,
-	MADIFX_kFrequency88_2kHz	= MADIFX_freq2 + MADIFX_freq0,
-	MADIFX_kFrequency96kHz		= MADIFX_freq2 + MADIFX_freq1,
-	MADIFX_kFrequency128kHz		= MADIFX_freq3 + MADIFX_freq2 + 0,
-	MADIFX_kFrequency176_4kHz	= MADIFX_freq3 + MADIFX_freq2 + MADIFX_freq0,
-	MADIFX_kFrequency192kHz		= MADIFX_freq3 + MADIFX_freq2 + MADIFX_freq1
+	MADIFX_kFrequency32kHz	  = 0,
+	MADIFX_kFrequency44_1kHz  = MADIFX_freq0,
+	MADIFX_kFrequency48kHz    = MADIFX_freq1,
+	MADIFX_kFrequency64kHz	  = MADIFX_freq2 + 0,
+	MADIFX_kFrequency88_2kHz  = MADIFX_freq2 + MADIFX_freq0,
+	MADIFX_kFrequency96kHz	  = MADIFX_freq2 + MADIFX_freq1,
+	MADIFX_kFrequency128kHz	  = MADIFX_freq3 + MADIFX_freq2 + 0,
+	MADIFX_kFrequency176_4kHz = MADIFX_freq3 + MADIFX_freq2 + MADIFX_freq0,
+	MADIFX_kFrequency192kHz	  = MADIFX_freq3 + MADIFX_freq2 + MADIFX_freq1
 };
 
 /* settings register bits */
@@ -205,7 +210,7 @@ enum {
 #define MADIFX_redundancy_mode	0x00002000
 #define MADIFX_mirror_madi_out	0x00004000
 
-#define MADIFX_SyncRefMask	(MADIFX_SyncRef0 | MADIFX_SyncRef1 | MADIFX_SyncRef2)
+#define MADIFX_SyncRefMask (MADIFX_SyncRef0 | MADIFX_SyncRef1 | MADIFX_SyncRef2)
 
 /* input freq register bits */
 
@@ -259,7 +264,7 @@ enum {
 #define MADIFX_mIRQ3		0x80000000
 
 /* --- bit helper defines */
-#define MADIFX_LatencyMask  (MADIFX_LAT_0|MADIFX_LAT_1|MADIFX_LAT_2|MADIFX_LAT_3)
+#define MADIFX_LatencyMask (MADIFX_LAT_0|MADIFX_LAT_1|MADIFX_LAT_2|MADIFX_LAT_3)
 
 #define madifx_encode_latency(x)       (((x)<<8) & MADIFX_LatencyMask)
 #define madifx_decode_latency(x)       ((((x) & MADIFX_LatencyMask)>>8))
@@ -454,7 +459,8 @@ static int snd_madifx_create_pcm(struct snd_card *card,
 					  struct hdspm *hdspm);
 
 static inline void snd_madifx_initialize_midi_flush(struct hdspm *hdspm);
-static int madifx_external_freq_index(struct hdspm *hdspm, enum madifx_syncsource port);
+static int madifx_external_freq_index(struct hdspm *hdspm,
+				      enum madifx_syncsource port);
 static int madifx_get_clock_select(struct hdspm *hdspm);
 static int snd_madifx_set_defaults(struct hdspm *hdspm);
 static int madifx_system_clock_mode(struct hdspm *hdspm);
@@ -779,9 +785,8 @@ static int madifx_set_rate(struct hdspm *hdspm, int rate, int called_internally)
 	if (current_speed != target_speed
 	    && (hdspm->capture_pid >= 0 || hdspm->playback_pid >= 0)) {
 		dev_err
-		    (hdspm->card->dev, "MADIFX: "
-		     "cannot change from %s speed to %s speed mode "
-		     "(capture PID = %d, playback PID = %d)\n",
+		    (hdspm->card->dev,
+		     "MADIFX: cannot change from %s speed to %s speed mode (capture PID = %d, playback PID = %d)\n",
 		     madifx_speed_names[current_speed],
 		     madifx_speed_names[target_speed],
 		     hdspm->capture_pid, hdspm->playback_pid);
@@ -1201,7 +1206,7 @@ static int madifx_get_system_sample_rate(struct hdspm *hdspm)
 }
 
 static int snd_madifx_info_system_sample_rate(struct snd_kcontrol *kcontrol,
-					     struct snd_ctl_elem_info *uinfo)
+					      struct snd_ctl_elem_info *uinfo)
 {
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
 	uinfo->count = 1;
@@ -1213,8 +1218,8 @@ static int snd_madifx_info_system_sample_rate(struct snd_kcontrol *kcontrol,
 
 
 static int snd_madifx_get_system_sample_rate(struct snd_kcontrol *kcontrol,
-					    struct snd_ctl_elem_value *
-					    ucontrol)
+					     struct snd_ctl_elem_value *
+					     ucontrol)
 {
 	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
 
@@ -1223,8 +1228,8 @@ static int snd_madifx_get_system_sample_rate(struct snd_kcontrol *kcontrol,
 }
 
 static int snd_madifx_put_system_sample_rate(struct snd_kcontrol *kcontrol,
-					    struct snd_ctl_elem_value *
-					    ucontrol)
+					     struct snd_ctl_elem_value *
+					     ucontrol)
 {
 	struct hdspm *hdspm = snd_kcontrol_chip(kcontrol);
 
@@ -1234,7 +1239,8 @@ static int snd_madifx_put_system_sample_rate(struct snd_kcontrol *kcontrol,
 
 
 
-static int madifx_external_freq_index(struct hdspm *hdspm, enum madifx_syncsource port)
+static int madifx_external_freq_index(struct hdspm *hdspm,
+				      enum madifx_syncsource port)
 {
 	int i = 0;
 	int freq0_bit;
@@ -1280,6 +1286,7 @@ static int madifx_external_freq_index(struct hdspm *hdspm, enum madifx_syncsourc
 		i = 0;
 	} else {
 		int freq_bits = inp_freq & (freq0_bit*15);
+
 		if      (freq_bits == freq0_bit * 1)
 			i = 1;
 		else if (freq_bits == freq0_bit * 2)
@@ -1336,7 +1343,8 @@ static int snd_madifx_get_autosync_sample_rate(struct snd_kcontrol *kcontrol,
 	switch (hdspm->io_type) {
 	case MADIFX:
 		ucontrol->value.enumerated.item[0] =
-			madifx_external_freq_index(hdspm, kcontrol->private_value);
+			madifx_external_freq_index(hdspm,
+						   kcontrol->private_value);
 		break;
 
 	default:
@@ -1359,9 +1367,10 @@ static int snd_madifx_get_autosync_sample_rate(struct snd_kcontrol *kcontrol,
 static int snd_madifx_info_channelcount(struct snd_kcontrol *kcontrol,
 					       struct snd_ctl_elem_info *uinfo)
 {
-	static const char *const texts[] = { "64", "56", "32", "28", "16", "14", "No lock" };
-	ENUMERATED_CTL_INFO(uinfo, texts);
+	static const char *const texts[] = { "64", "56", "32", "28", "16",
+		"14", "No lock" };
 
+	ENUMERATED_CTL_INFO(uinfo, texts);
 	return 0;
 }
 
@@ -1459,6 +1468,7 @@ static int madifx_clock_source(struct hdspm *hdspm)
 static int madifx_set_clock_source(struct hdspm *hdspm, int mode)
 {
 	int rate;
+
 	switch (mode) {
 	case 0:
 		rate = 32000; break;
@@ -1728,7 +1738,8 @@ static int snd_madifx_info_sync_check(struct snd_kcontrol *kcontrol,
 				     struct snd_ctl_elem_info *uinfo)
 {
 	static const char *const texts[] = { "No Lock", "Lock", "Sync", "N/A" };
-	ENUMERATED_CTL_INFO (uinfo, texts);
+
+	ENUMERATED_CTL_INFO(uinfo, texts);
 	return 0;
 }
 
@@ -1852,30 +1863,9 @@ static int snd_madifx_create_controls(struct snd_card *card,
 		}
 	}
 
-
-	/* FIXME: MADI FX, we don't know how to mix, yet */
-#if 0
-	/* create simple 1:1 playback mixer controls */
-	snd_madifx_playback_mixer.name = "Chn";
-	if (hdspm->system_sample_rate >= 128000) {
-		limit = hdspm->qs_out_channels;
-	} else if (hdspm->system_sample_rate >= 64000) {
-		limit = hdspm->ds_out_channels;
-	} else {
-		limit = hdspm->ss_out_channels;
-	}
-	for (idx = 0; idx < limit; ++idx) {
-		struct snd_kcontrol *kctl;
-		snd_madifx_playback_mixer.index = idx + 1;
-		kctl = snd_ctl_new1(&snd_madifx_playback_mixer, hdspm);
-		err = snd_ctl_add(card, kctl);
-		if (err < 0)
-			return err;
-		hdspm->playback_mixer_ctls[idx] = kctl;
-	}
-#endif
-
-
+	/* FIXME: If there'll ever be an ALSA mixer for MADIFX, you want to
+	 * create the corresponding controls here.
+	 */
 	return 0;
 }
 
@@ -1940,8 +1930,7 @@ snd_madifx_proc_read_madifx(struct snd_info_entry *entry,
 		madifx_read(hdspm, MADIFX_midi_in2_status) & 0xFF,
 		madifx_read(hdspm, MADIFX_midi_in3_status) & 0xFF);
 	snd_iprintf(buffer,
-		"Register:\ncontrol=0x%x, settings=0x%x, status=0x%x, "
-		"input=0x%x inp_freq=0x%x\n",
+		"Register:\ncontrol=0x%x, settings=0x%x, status=0x%x, input=0x%x inp_freq=0x%x\n",
 		hdspm->control_register, hdspm->settings_register,
 		status, inp_status, freq);
 
@@ -1972,30 +1961,6 @@ snd_madifx_proc_read_madifx(struct snd_info_entry *entry,
 	snd_iprintf(buffer,
 		"Size (Latency): %d samples\n", x);
 
-#if 0
-	snd_iprintf(buffer, "Line out: %s\n",
-		(hdspm->control_register & HDSPM_LineOut) ? "on " : "off");
-
-	switch (hdspm->control_register & HDSPM_InputMask) {
-	case HDSPM_InputOptical:
-		insel = "Optical";
-		break;
-	case HDSPM_InputCoaxial:
-		insel = "Coaxial";
-		break;
-	default:
-		insel = "Unknown";
-	}
-
-	snd_iprintf(buffer,
-		"ClearTrackMarker = %s, Transmit in %s Channel Mode, "
-		"Auto Input %s\n",
-		(hdspm->control_register & HDSPM_clr_tms) ? "on" : "off",
-		(hdspm->control_register & HDSPM_TX_64ch) ? "64" : "56",
-		(hdspm->control_register & HDSPM_AutoInp) ? "on" : "off");
-#endif
-
-
 	if (1 == madifx_system_clock_mode(hdspm))
 		system_clock_mode = "Slave";
 	else
@@ -2003,55 +1968,10 @@ snd_madifx_proc_read_madifx(struct snd_info_entry *entry,
 	snd_iprintf(buffer, "AutoSync Reference: %s\n", system_clock_mode);
 
 	snd_iprintf(buffer, "Selected clock source: %s\n",
-			hdspm->texts_clocksource[madifx_get_clock_select(hdspm)]);
+		hdspm->texts_clocksource[madifx_get_clock_select(hdspm)]);
 
 	snd_iprintf(buffer, "System Clock Frequency: %d\n",
 			hdspm->system_sample_rate);
-
-
-#if 0
-	snd_iprintf(buffer, "--- Status:\n");
-
-	x = status & HDSPM_madiSync;
-	x2 = status2 & HDSPM_wcSync;
-
-	snd_iprintf(buffer, "Inputs MADI=%s, WordClock=%s\n",
-			(status & HDSPM_madiLock) ? (x ? "Sync" : "Lock") :
-			"NoLock",
-			(status2 & HDSPM_wcLock) ? (x2 ? "Sync" : "Lock") :
-			"NoLock");
-
-	switch (madifx_autosync_ref(hdspm)) {
-	case HDSPM_AUTOSYNC_FROM_SYNC_IN:
-		autosync_ref = "Sync In";
-		break;
-	case HDSPM_AUTOSYNC_FROM_TCO:
-		autosync_ref = "TCO";
-		break;
-	case HDSPM_AUTOSYNC_FROM_WORD:
-		autosync_ref = "Word Clock";
-		break;
-	case HDSPM_AUTOSYNC_FROM_MADI:
-		autosync_ref = "MADI Sync";
-		break;
-	case HDSPM_AUTOSYNC_FROM_NONE:
-		autosync_ref = "Input not valid";
-		break;
-	default:
-		autosync_ref = "---";
-		break;
-	}
-	snd_iprintf(buffer,
-		"AutoSync: Reference= %s, Freq=%d (MADI = %d, Word = %d)\n",
-		autosync_ref, madifx_external_sample_rate(hdspm),
-		(status & HDSPM_madiFreqMask) >> 22,
-		(status2 & HDSPM_wcFreqMask) >> 5);
-
-	snd_iprintf(buffer, "Input: %s, Mode=%s\n",
-		(status & HDSPM_AB_int) ? "Coax" : "Optical",
-		(status & HDSPM_RX_64ch) ? "64 channels" :
-		"56 channels");
-#endif
 
 	snd_iprintf(buffer, "\n");
 }
@@ -2257,6 +2177,7 @@ static snd_pcm_uframes_t snd_madifx_hw_pointer(struct snd_pcm_substream
 					      *substream)
 {
 	struct hdspm *hdspm = snd_pcm_substream_chip(substream);
+
 	return madifx_hw_pointer(hdspm);
 }
 
@@ -2279,6 +2200,7 @@ static int snd_madifx_reset(struct snd_pcm_substream *substream)
 	if (other) {
 		struct snd_pcm_substream *s;
 		struct snd_pcm_runtime *oruntime = other->runtime;
+
 		snd_pcm_group_for_each_entry(s, substream) {
 			if (s == other) {
 				oruntime->status->hw_ptr =
@@ -2361,7 +2283,7 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 #define NUM_AES_PAGES (32768*2/4096)
 #define NUM_MADI_PAGES (32768*192/4096)
 #define NUM_DMA_CH_PAGES (32768*8/4096)
-#define MADIFX_HARDWARE_PAGE_SIZE 4096
+#define MADIFX_HW_PAGE_SIZE 4096
 
 	{
 		int wanted;
@@ -2384,24 +2306,28 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 		/* initialise default DMA table. Will be
 		 * overwritten in a second. */
 		for (i = 0; i < MADIFX_MAX_PAGE_TABLE_SIZE/2; i++)
-			hdspm->dmaPageTable[i] = snd_pcm_sgbuf_get_addr(substream, 0);
+			hdspm->dmaPageTable[i] =
+					snd_pcm_sgbuf_get_addr(substream, 0);
 
 		/* AES Out, stereo */
 		for (i = 0; i < NUM_AES_PAGES; i++)
-			hdspm->dmaPageTable[i] = snd_pcm_sgbuf_get_addr(substream,
-					i * MADIFX_HARDWARE_PAGE_SIZE);
+			hdspm->dmaPageTable[i] =
+					snd_pcm_sgbuf_get_addr(substream,
+					i * MADIFX_HW_PAGE_SIZE);
 
 		/* Phones Out, stereo */
 		for (i = 0; i < NUM_AES_PAGES; i++)
 			hdspm->dmaPageTable[i+1*NUM_DMA_CH_PAGES] =
 				snd_pcm_sgbuf_get_addr(substream,
-						(i+1*NUM_AES_PAGES) * MADIFX_HARDWARE_PAGE_SIZE);
+					(i+1*NUM_AES_PAGES) *
+					MADIFX_HW_PAGE_SIZE);
 
 		/* MADI Out, 192 channels */
 		for (i = 0; i < NUM_MADI_PAGES; i++)
 			hdspm->dmaPageTable[i+2*NUM_DMA_CH_PAGES] =
 				snd_pcm_sgbuf_get_addr(substream,
-						(i+2*NUM_AES_PAGES) * MADIFX_HARDWARE_PAGE_SIZE);
+						(i+2*NUM_AES_PAGES) *
+						MADIFX_HW_PAGE_SIZE);
 
 		for (i = 0; i < MADIFX_MAX_PAGE_TABLE_SIZE/2; i++)
 			madifx_write(hdspm, MADIFX_PAGE_ADDRESS_LIST + (4 * i),
@@ -2419,7 +2345,8 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 		 * overwritten in a second. */
 		for (i = MADIFX_MAX_PAGE_TABLE_SIZE/2;
 				i < MADIFX_MAX_PAGE_TABLE_SIZE; i++) {
-			hdspm->dmaPageTable[i] = snd_pcm_sgbuf_get_addr(substream, 0);
+			hdspm->dmaPageTable[i] =
+					snd_pcm_sgbuf_get_addr(substream, 0);
 		}
 
 		/* setup DMA page table */
@@ -2427,14 +2354,14 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 		for (i = 0; i < NUM_AES_PAGES; i++) {
 			hdspm->dmaPageTable[i+MADIFX_MAX_PAGE_TABLE_SIZE/2] =
 				snd_pcm_sgbuf_get_addr(substream,
-						i * MADIFX_HARDWARE_PAGE_SIZE);
+						i * MADIFX_HW_PAGE_SIZE);
 		}
 
 		/* MADI In, 192 channels */
 		for (i = 0; i < NUM_MADI_PAGES; i++) {
 			hdspm->dmaPageTable[i + MADIFX_MAX_PAGE_TABLE_SIZE / 2 + NUM_DMA_CH_PAGES] =
 				snd_pcm_sgbuf_get_addr(substream,
-						(i + NUM_AES_PAGES) * MADIFX_HARDWARE_PAGE_SIZE);
+					(i + NUM_AES_PAGES) * MADIFX_HW_PAGE_SIZE);
 		}
 
 		for (i = MADIFX_MAX_PAGE_TABLE_SIZE/2;
@@ -2515,34 +2442,34 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 
 		switch (hdspm->speedmode) {
 		case ss:
-			/* MADI FX Playback channel map
-			   Outputstream 0 with 2 channels at byte offset 0          AES
-			   Outputstream 1 with 8 channels at byte offset 131072     MADI
-			   Outputstream 2 with 8 channels at byte offset 393216
-			   Outputstream 3 with 8 channels at byte offset 655360
-			   Outputstream 4 with 8 channels at byte offset 917504
-			   Outputstream 5 with 8 channels at byte offset 1179648
-			   Outputstream 6 with 8 channels at byte offset 1441792
-			   Outputstream 7 with 8 channels at byte offset 1703936
-			   Outputstream 8 with 8 channels at byte offset 1966080
-			   Outputstream 9 with 8 channels at byte offset 2228224
-			   Outputstream 10 with 8 channels at byte offset 2490368
-			   Outputstream 11 with 8 channels at byte offset 2752512
-			   Outputstream 12 with 8 channels at byte offset 3014656
-			   Outputstream 13 with 8 channels at byte offset 3276800
-			   Outputstream 14 with 8 channels at byte offset 3538944
-			   Outputstream 15 with 8 channels at byte offset 3801088
-			   Outputstream 16 with 8 channels at byte offset 4063232
-			   Outputstream 17 with 8 channels at byte offset 4325376
-			   Outputstream 18 with 8 channels at byte offset 4587520
-			   Outputstream 19 with 8 channels at byte offset 4849664
-			   Outputstream 20 with 8 channels at byte offset 5111808
-			   Outputstream 21 with 8 channels at byte offset 5373952
-			   Outputstream 22 with 8 channels at byte offset 5636096
-			   Outputstream 23 with 8 channels at byte offset 5898240
-			   Outputstream 24 with 8 channels at byte offset 6160384
-			   Outputstream 25 with 2 channels at byte offset 65536     Phones
-			   */
+		/* MADI FX Playback channel map
+	AES	   Outputstream 0 with 2 channels at byte offset 0
+	MADI	   Outputstream 1 with 8 channels at byte offset 131072
+		   Outputstream 2 with 8 channels at byte offset 393216
+		   Outputstream 3 with 8 channels at byte offset 655360
+		   Outputstream 4 with 8 channels at byte offset 917504
+		   Outputstream 5 with 8 channels at byte offset 1179648
+		   Outputstream 6 with 8 channels at byte offset 1441792
+		   Outputstream 7 with 8 channels at byte offset 1703936
+		   Outputstream 8 with 8 channels at byte offset 1966080
+		   Outputstream 9 with 8 channels at byte offset 2228224
+		   Outputstream 10 with 8 channels at byte offset 2490368
+		   Outputstream 11 with 8 channels at byte offset 2752512
+		   Outputstream 12 with 8 channels at byte offset 3014656
+		   Outputstream 13 with 8 channels at byte offset 3276800
+		   Outputstream 14 with 8 channels at byte offset 3538944
+		   Outputstream 15 with 8 channels at byte offset 3801088
+		   Outputstream 16 with 8 channels at byte offset 4063232
+		   Outputstream 17 with 8 channels at byte offset 4325376
+		   Outputstream 18 with 8 channels at byte offset 4587520
+		   Outputstream 19 with 8 channels at byte offset 4849664
+		   Outputstream 20 with 8 channels at byte offset 5111808
+		   Outputstream 21 with 8 channels at byte offset 5373952
+		   Outputstream 22 with 8 channels at byte offset 5636096
+		   Outputstream 23 with 8 channels at byte offset 5898240
+		   Outputstream 24 with 8 channels at byte offset 6160384
+	Phones	   Outputstream 25 with 2 channels at byte offset 65536
+		*/
 
 			/* Note: channels start at zero */
 			last_madi_channel = 193;
@@ -2558,7 +2485,8 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 	    0 : ((info->channel > last_madi_channel) ? 65536 :
 		    131072 + 8 * 4 * 8192 * ((info->channel-2)/8));
 	info->first = (info->channel < 2 || info->channel > last_madi_channel) ?
-	    32 * (info->channel % (last_madi_channel + 1)) : 32 * ((info->channel-2) % 8);
+	    32 * (info->channel % (last_madi_channel + 1)) :
+	    32 * ((info->channel-2) % 8);
 	info->step = (info->channel < 2 || info->channel > last_madi_channel) ?
 	    64 : 256;
 	} else {
@@ -2570,39 +2498,41 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 		}
 
 		switch (hdspm->speedmode) {
-			/* MADI FX Input channel map
-			   Inputstream 0 with 2 channels at byte offset 0           AES
-			   Inputstream 1 with 8 channels at byte offset 65536       MADI
-			   Inputstream 2 with 8 channels at byte offset 327680
-			   Inputstream 3 with 8 channels at byte offset 589824
-			   Inputstream 4 with 8 channels at byte offset 851968
-			   Inputstream 5 with 8 channels at byte offset 1114112
-			   Inputstream 6 with 8 channels at byte offset 1376256
-			   Inputstream 7 with 8 channels at byte offset 1638400
-			   Inputstream 8 with 8 channels at byte offset 1900544
-			   Inputstream 9 with 8 channels at byte offset 2162688
-			   Inputstream 10 with 8 channels at byte offset 2424832
-			   Inputstream 11 with 8 channels at byte offset 2686976
-			   Inputstream 12 with 8 channels at byte offset 2949120
-			   Inputstream 13 with 8 channels at byte offset 3211264
-			   Inputstream 14 with 8 channels at byte offset 3473408
-			   Inputstream 15 with 8 channels at byte offset 3735552
-			   Inputstream 16 with 8 channels at byte offset 3997696
-			   Inputstream 17 with 8 channels at byte offset 4259840
-			   Inputstream 18 with 8 channels at byte offset 4521984
-			   Inputstream 19 with 8 channels at byte offset 4784128
-			   Inputstream 20 with 8 channels at byte offset 5046272
-			   Inputstream 21 with 8 channels at byte offset 5308416
-			   Inputstream 22 with 8 channels at byte offset 5570560
-			   Inputstream 23 with 8 channels at byte offset 5832704
-			   Inputstream 24 with 8 channels at byte offset 6094848
-			   */
+		/* MADI FX Input channel map
+	AES	   Inputstream 0 with 2 channels at byte offset 0
+	MADI	   Inputstream 1 with 8 channels at byte offset 65536
+		   Inputstream 2 with 8 channels at byte offset 327680
+		   Inputstream 3 with 8 channels at byte offset 589824
+		   Inputstream 4 with 8 channels at byte offset 851968
+		   Inputstream 5 with 8 channels at byte offset 1114112
+		   Inputstream 6 with 8 channels at byte offset 1376256
+		   Inputstream 7 with 8 channels at byte offset 1638400
+		   Inputstream 8 with 8 channels at byte offset 1900544
+		   Inputstream 9 with 8 channels at byte offset 2162688
+		   Inputstream 10 with 8 channels at byte offset 2424832
+		   Inputstream 11 with 8 channels at byte offset 2686976
+		   Inputstream 12 with 8 channels at byte offset 2949120
+		   Inputstream 13 with 8 channels at byte offset 3211264
+		   Inputstream 14 with 8 channels at byte offset 3473408
+		   Inputstream 15 with 8 channels at byte offset 3735552
+		   Inputstream 16 with 8 channels at byte offset 3997696
+		   Inputstream 17 with 8 channels at byte offset 4259840
+		   Inputstream 18 with 8 channels at byte offset 4521984
+		   Inputstream 19 with 8 channels at byte offset 4784128
+		   Inputstream 20 with 8 channels at byte offset 5046272
+		   Inputstream 21 with 8 channels at byte offset 5308416
+		   Inputstream 22 with 8 channels at byte offset 5570560
+		   Inputstream 23 with 8 channels at byte offset 5832704
+		   Inputstream 24 with 8 channels at byte offset 6094848
+	       */
 		case ss:
 		case ds:
 		case qs:
-			info->offset = (info->channel < 2) ? 0 : 65536 + 8 * 4 * 8192 *
-				((info->channel-2)/8);
-			info->first = (info->channel < 2) ? 32 * info->channel :
+			info->offset = (info->channel < 2) ?
+				0 :
+				65536 + 8 * 4 * 8192 * ((info->channel-2)/8);
+			info->first = (info->channel < 2) ?
+				32 * info->channel :
 				32 * ((info->channel-2) % 8);
 			info->step = (info->channel < 2) ? 64 : 256;
 			break;
@@ -2623,6 +2553,7 @@ static int snd_madifx_ioctl(struct snd_pcm_substream *substream,
 	case SNDRV_PCM_IOCTL1_CHANNEL_INFO:
 		{
 			struct snd_pcm_channel_info *info = arg;
+
 			return snd_madifx_channel_info(substream, info);
 		}
 	default:
@@ -2659,6 +2590,7 @@ static int snd_madifx_trigger(struct snd_pcm_substream *substream, int cmd)
 
 	if (other) {
 		struct snd_pcm_substream *s;
+
 		snd_pcm_group_for_each_entry(s, substream) {
 			if (s == other) {
 				snd_pcm_trigger_done(s, substream);
@@ -2783,8 +2715,9 @@ static int snd_madifx_hw_rule_in_channels_rate(struct snd_pcm_hw_params *params,
 	return 0;
 }
 
-static int snd_madifx_hw_rule_out_channels_rate(struct snd_pcm_hw_params *params,
-					   struct snd_pcm_hw_rule *rule)
+static int snd_madifx_hw_rule_out_channels_rate(struct snd_pcm_hw_params *
+						params,
+						struct snd_pcm_hw_rule *rule)
 {
 	struct hdspm *hdspm = rule->private;
 	struct snd_interval *c =
@@ -2813,13 +2746,12 @@ static int snd_madifx_hw_rule_out_channels_rate(struct snd_pcm_hw_params *params
 			.integer = 1,
 		};
 		return snd_interval_refine(c, &t);
-	} else {
 	}
 	return 0;
 }
 
 static int snd_madifx_hw_rule_rate_in_channels(struct snd_pcm_hw_params *params,
-					   struct snd_pcm_hw_rule *rule)
+					       struct snd_pcm_hw_rule *rule)
 {
 	struct hdspm *hdspm = rule->private;
 	struct snd_interval *c =
@@ -2852,8 +2784,9 @@ static int snd_madifx_hw_rule_rate_in_channels(struct snd_pcm_hw_params *params,
 
 	return 0;
 }
-static int snd_madifx_hw_rule_rate_out_channels(struct snd_pcm_hw_params *params,
-					   struct snd_pcm_hw_rule *rule)
+static int snd_madifx_hw_rule_rate_out_channels(struct snd_pcm_hw_params *
+						params,
+						struct snd_pcm_hw_rule *rule)
 {
 	struct hdspm *hdspm = rule->private;
 	struct snd_interval *c =
@@ -3060,6 +2993,7 @@ static int snd_madifx_hwdep_dummy_op(struct snd_hwdep *hw, struct file *file)
 static inline int copy_u32_le(void __user *dest, void __iomem *src)
 {
 	u32 val = readl(src);
+
 	return copy_to_user(dest, &val, 4);
 }
 
@@ -3073,68 +3007,68 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 #ifdef CONFIG_SND_MADIFX_BROKEN
 	struct madifx_level_buffer *levels;
 	struct madifx_mixer_ioctl mixer;
-	long unsigned int s;
+	unsigned long int s;
 #endif /* CONFIG_SND_MADIFX_BROKEN */
 	int i = 0;
 
 	switch (cmd) {
 
 #ifdef CONFIG_SND_MADIFX_BROKEN
+	int row;
+
 	case SNDRV_MADIFX_IOCTL_GET_LEVEL:
-		{
-			int row;
 
-			levels = &(hdspm->peak_rms);
-			for (row = 1; row <= 5 ; row++) {
-				int rms_index, peak_index;
-				u32 *target_rms, *target_peak;
+		levels = &(hdspm->peak_rms);
+		for (row = 1; row <= 5 ; row++) {
+			int rms_index, peak_index;
+			u32 *target_rms, *target_peak;
 
-				switch (row) {
-				case 1:
-					rms_index = MADIFX_RD_RMS_IN;
-					peak_index = MADIFX_RD_PEAK_IN;
-					target_rms = levels->rms_in;
-					target_peak = levels->peak_in;
-					break;
-				case 2:
-					rms_index = MADIFX_RD_RMS_PLAY;
-					peak_index = MADIFX_RD_PEAK_PLAY;
-					target_rms = levels->rms_play;
-					target_peak = levels->peak_play;
-					break;
-				case 3:
-					rms_index = MADIFX_RD_RMS_OUT;
-					peak_index = MADIFX_RD_PEAK_OUT;
-					target_rms = levels->rms_out;
-					target_peak = levels->peak_out;
-					break;
-				case 4:
-					rms_index = MADIFX_RD_RMS_IN_PRE;
-					peak_index = MADIFX_RD_PEAK_IN_PRE;
-					target_rms = levels->rms_in_pre;
-					target_peak = levels->peak_in_pre;
-					break;
-				default:
-					rms_index = MADIFX_RD_RMS_OUT_PRE;
-					peak_index = MADIFX_RD_PEAK_OUT_PRE;
-					target_rms = levels->rms_out_pre;
-					target_peak = levels->peak_out_pre;
-					break;
-				}
-
-				for (i = 0; i < 2 * 256; i++)
-					*(target_rms + i) = hdspm->level_buffer[rms_index + i];
-
-				for (i = 0; i < 256; i++)
-					*(target_peak + i) = hdspm->level_buffer[peak_index + i];
+			switch (row) {
+			case 1:
+				rms_index = MADIFX_RD_RMS_IN;
+				peak_index = MADIFX_RD_PEAK_IN;
+				target_rms = levels->rms_in;
+				target_peak = levels->peak_in;
+				break;
+			case 2:
+				rms_index = MADIFX_RD_RMS_PLAY;
+				peak_index = MADIFX_RD_PEAK_PLAY;
+				target_rms = levels->rms_play;
+				target_peak = levels->peak_play;
+				break;
+			case 3:
+				rms_index = MADIFX_RD_RMS_OUT;
+				peak_index = MADIFX_RD_PEAK_OUT;
+				target_rms = levels->rms_out;
+				target_peak = levels->peak_out;
+				break;
+			case 4:
+				rms_index = MADIFX_RD_RMS_IN_PRE;
+				peak_index = MADIFX_RD_PEAK_IN_PRE;
+				target_rms = levels->rms_in_pre;
+				target_peak = levels->peak_in_pre;
+				break;
+			default:
+				rms_index = MADIFX_RD_RMS_OUT_PRE;
+				peak_index = MADIFX_RD_PEAK_OUT_PRE;
+				target_rms = levels->rms_out_pre;
+				target_peak = levels->peak_out_pre;
+				break;
 			}
 
-		}
+			for (i = 0; i < 2 * 256; i++)
+				*(target_rms + i) =
+					hdspm->level_buffer[rms_index + i];
 
+			for (i = 0; i < 256; i++)
+				*(target_peak + i) =
+					hdspm->level_buffer[peak_index + i];
+		}
 
 		levels->speed = hdspm->speedmode;
 
-		s = copy_to_user(argp, levels, sizeof(struct madifx_level_buffer));
+		s = copy_to_user(argp, levels,
+				 sizeof(struct madifx_level_buffer));
 		if (0 != s) {
 			/* snd_printk(KERN_ERR "copy_to_user(.., .., %lu): %lu
 			 [Levels]\n", sizeof(struct madifx_peak_rms), s);
@@ -3194,7 +3128,8 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 		for (i = 0; i < ARRAY_SIZE(status.sync_check); i++) {
 			status.sync_check[i] = madifx_sync_check(hdspm, i);
 			status.external_sample_rates[i] =
-				HDSPM_bit2freq(madifx_external_freq_index(hdspm, i));
+				HDSPM_bit2freq(
+					madifx_external_freq_index(hdspm, i));
 		}
 
 		for (i = 0; i < ARRAY_SIZE(status.madi_channelcount); i++) {
@@ -3310,8 +3245,9 @@ static int snd_madifx_preallocate_memory(struct hdspm *hdspm)
 		snd_printdd("Could not preallocate %zd Bytes\n", wanted);
 
 		return err;
-	} else
+	} else {
 		snd_printdd(" Preallocated %zd Bytes\n", wanted);
+	}
 
 #ifdef CONFIG_SND_MADIFX_BROKEN
 	/* allocate level buffer */
@@ -3327,7 +3263,7 @@ static int snd_madifx_preallocate_memory(struct hdspm *hdspm)
 	/* Fill level page table */
 	for (i = 0; i < MADIFX_NUM_LEVEL_PAGES; i++) {
 		levelPageTable[i] = snd_sgbuf_get_addr(&(hdspm->dmaLevelBuffer),
-				i * MADIFX_HARDWARE_PAGE_SIZE);
+				i * MADIFX_HW_PAGE_SIZE);
 
 	}
 
@@ -3454,6 +3390,7 @@ static int snd_madifx_create(struct snd_card *card,
 
 	struct pci_dev *pci = hdspm->pci;
 	int err;
+	int i;
 	unsigned long io_extent;
 
 	hdspm->irq = -1;
@@ -3523,44 +3460,49 @@ static int snd_madifx_create(struct snd_card *card,
 
 	hdspm->newmixer = kzalloc(sizeof(struct madifx_newmixer), GFP_KERNEL);
 	if (!hdspm->newmixer) {
-		dev_err(hdspm->card->dev,
-			"MADIFX: unable to kmalloc Mixer memory of %d Bytes\n",
-			(int)sizeof(struct madifx_newmixer));
 		return -ENOMEM;
 	}
 
-	{
-		/* This somehow initialises the mixer. I have no idea what it
-		 * does exactly.
-		 */
-		int i;
-		for (i = 0; i < MADIFX_NUM_OUTPUT_GAINS; i++)
-			hdspm->newmixer->output_gain[i] = 0x9000;
+	/* This initialises the mixer to a static 1:1 routing.
+	 *
+	 * The new mixer is a list of tuples (C, g), where C represents
+	 * a point in the matrix (x,y) encoded into a single integer and
+	 * g the corresponding gain value.
+	 *
+	 * For a given channel number i,
+	 *    256 + i encodes the input channel
+	 * and
+	 *    i << 9 encodes the output channel.
+	 *
+	 * C is then encoded as (256 + x) | (y << 9)
+	 */
 
-		for (i = 0; i < MADIFX_LIST_LENGTH; i++) {
-			hdspm->newmixer->listCh[i] = 0;
-			hdspm->newmixer->listVol[i] = 0;
-		}
+	for (i = 0; i < MADIFX_NUM_OUTPUT_GAINS; i++)
+		hdspm->newmixer->output_gain[i] = 0x9000;
 
-		for (i = 0; i < 196; i++) {
-			hdspm->newmixer->listCh[i] = (256 + i) | (i << 9);
-			hdspm->newmixer->listVol[i] = 32768+(32768>>3);
-		}
+	for (i = 0; i < MADIFX_LIST_LENGTH; i++) {
+		hdspm->newmixer->listCh[i] = 0;
+		hdspm->newmixer->listVol[i] = 0;
+	}
 
-		/* Of course, the data has to be written to the device before
-		 * something can happen.
-		 */
-		for (i = 0; i < MADIFX_LIST_LENGTH; i++) {
-			madifx_write(hdspm, MADIFX_MIXER_LIST_CH + (4 * i),
-					hdspm->newmixer->listCh[i]);
-			madifx_write(hdspm, MADIFX_MIXER_LIST_VOL + (4 * i),
-					hdspm->newmixer->listVol[i]);
-		}
+	for (i = 0; i < 196; i++) {
+		hdspm->newmixer->listCh[i] = (256 + i) | (i << 9);
+		hdspm->newmixer->listVol[i] = 32768+(32768>>3);
+	}
 
-		for (i = 0; i < MADIFX_NUM_OUTPUT_GAINS; i++) {
-			madifx_write(hdspm, MADIFX_WR_OUTPUT_GAIN + (4 * i),
-					hdspm->newmixer->output_gain[i]);
-		}
+	/* Of course, the data has to be written to the device before
+	 * something can happen.
+	 */
+	for (i = 0; i < MADIFX_LIST_LENGTH; i++) {
+		madifx_write(hdspm, MADIFX_MIXER_LIST_CH + (4 * i),
+			     hdspm->newmixer->listCh[i]);
+		madifx_write(hdspm, MADIFX_MIXER_LIST_VOL + (4 * i),
+			     hdspm->newmixer->listVol[i]);
+	}
+
+	for (i = 0; i < MADIFX_NUM_OUTPUT_GAINS; i++) {
+		madifx_write(hdspm, MADIFX_WR_OUTPUT_GAIN + (4 * i),
+			     hdspm->newmixer->output_gain[i]);
 	}
 
 
