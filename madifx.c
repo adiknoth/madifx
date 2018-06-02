@@ -1234,7 +1234,7 @@ static int snd_madifx_put_system_sample_rate(struct snd_kcontrol *kcontrol,
 {
 	struct mfx *mfx = snd_kcontrol_chip(kcontrol);
 
-	madifx_set_dds_value(mfx, ucontrol->value.enumerated.item[0]);
+	madifx_set_dds_value(mfx, ucontrol->value.integer.value[0]);
 	return 0;
 }
 
