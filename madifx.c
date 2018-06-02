@@ -3622,8 +3622,7 @@ static int snd_madifx_probe(struct pci_dev *pci,
 
 	err = snd_madifx_create(card, mfx);
 	if (err < 0) {
-		snd_card_free(card);
-		return err;
+		goto free_card;
 	}
 
 	sprintf(card->shortname, "%s_%x",
@@ -3636,8 +3635,7 @@ static int snd_madifx_probe(struct pci_dev *pci,
 
 	err = snd_card_register(card);
 	if (err < 0) {
-		snd_card_free(card);
-		return err;
+		goto free_card;
 	}
 
 	pci_set_drvdata(pci, card);
@@ -3646,6 +3644,10 @@ static int snd_madifx_probe(struct pci_dev *pci,
 
 	dev++;
 	return 0;
+
+free_card:
+	snd_card_free(card);
+	return err;
 }
 
 static void snd_madifx_remove(struct pci_dev *pci)
