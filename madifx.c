@@ -968,9 +968,9 @@ snd_madifx_midi_input_trigger(struct snd_rawmidi_substream *substream, int up)
 	spin_unlock_irqrestore(&mfx->lock, flags);
 }
 
-static void snd_madifx_midi_output_timer(unsigned long data)
+static void snd_madifx_midi_output_timer(struct timer_list *t)
 {
-	struct madifx_midi *hmidi = (struct madifx_midi *) data;
+	struct madifx_midi *hmidi = from_timer(hmidi, t, timer);
 	unsigned long flags;
 
 	snd_madifx_midi_output_write(hmidi);
@@ -998,8 +998,8 @@ snd_madifx_midi_output_trigger(struct snd_rawmidi_substream *substream, int up)
 	spin_lock_irqsave(&hmidi->lock, flags);
 	if (up) {
 		if (!hmidi->istimer) {
-			setup_timer(&hmidi->timer, snd_madifx_midi_output_timer,
-					(unsigned long) hmidi);
+			timer_setup(&hmidi->timer,
+					snd_madifx_midi_output_timer, 0);
 			mod_timer(&hmidi->timer, 1 + jiffies);
 			hmidi->istimer++;
 		}
