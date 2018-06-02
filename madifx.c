@@ -2430,14 +2430,15 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 		struct snd_pcm_channel_info *info)
 {
 	struct mfx *mfx = snd_pcm_substream_chip(substream);
+	unsigned int channel = info->channel;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		int last_madi_channel = 193;
 
-		if (snd_BUG_ON(info->channel >= mfx->max_channels_out)) {
+		if (snd_BUG_ON(channel >= mfx->max_channels_out)) {
 			dev_info(mfx->card->dev,
 				"snd_madifx_channel_info: output channel out of range (%d)\n",
-				info->channel);
+				channel);
 			return -EINVAL;
 		}
 
@@ -2482,19 +2483,19 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 			last_madi_channel = 49;
 			break;
 		}
-	info->offset = (info->channel < 2) ?
-	    0 : ((info->channel > last_madi_channel) ? 65536 :
-		    131072 + 8 * 4 * 8192 * ((info->channel-2)/8));
-	info->first = (info->channel < 2 || info->channel > last_madi_channel) ?
-	    32 * (info->channel % (last_madi_channel + 1)) :
-	    32 * ((info->channel-2) % 8);
-	info->step = (info->channel < 2 || info->channel > last_madi_channel) ?
+	info->offset = (channel < 2) ?
+	    0 : ((channel > last_madi_channel) ? 65536 :
+		    131072 + 8 * 4 * 8192 * ((channel-2)/8));
+	info->first = (channel < 2 || channel > last_madi_channel) ?
+	    32 * (channel % (last_madi_channel + 1)) :
+	    32 * ((channel-2) % 8);
+	info->step = (channel < 2 || channel > last_madi_channel) ?
 	    64 : 256;
 	} else {
-		if (snd_BUG_ON(info->channel >= mfx->max_channels_in)) {
+		if (snd_BUG_ON(channel >= mfx->max_channels_in)) {
 			dev_info(mfx->card->dev,
 				"snd_madifx_channel_info: input channel out of range (%d)\n",
-					info->channel);
+					channel);
 			return -EINVAL;
 		}
 
@@ -2529,13 +2530,13 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 		case ss:
 		case ds:
 		case qs:
-			info->offset = (info->channel < 2) ?
+			info->offset = (channel < 2) ?
 				0 :
-				65536 + 8 * 4 * 8192 * ((info->channel-2)/8);
-			info->first = (info->channel < 2) ?
-				32 * info->channel :
-				32 * ((info->channel-2) % 8);
-			info->step = (info->channel < 2) ? 64 : 256;
+				65536 + 8 * 4 * 8192 * ((channel-2)/8);
+			info->first = (channel < 2) ?
+				32 * channel :
+				32 * ((channel-2) % 8);
+			info->step = (channel < 2) ? 64 : 256;
 			break;
 		}
 	}
