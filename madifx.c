@@ -2878,9 +2878,9 @@ static int snd_madifx_playback_open(struct snd_pcm_substream *substream)
 		snd_pcm_hw_constraint_minmax(runtime,
 					     SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
 					     32, 4096);
-		snd_pcm_hw_constraint_minmax(runtime,
+		snd_pcm_hw_constraint_single(runtime,
 					     SNDRV_PCM_HW_PARAM_BUFFER_SIZE,
-					     8192, 8192);
+					     8192);
 		break;
 
 	default:
@@ -2945,9 +2945,9 @@ static int snd_madifx_capture_open(struct snd_pcm_substream *substream)
 		snd_pcm_hw_constraint_minmax(runtime,
 					     SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
 					     32, 4096);
-		snd_pcm_hw_constraint_minmax(runtime,
+		snd_pcm_hw_constraint_single(runtime,
 					     SNDRV_PCM_HW_PARAM_BUFFER_SIZE,
-					     8192, 8192);
+					     8192);
 		break;
 
 	default:
