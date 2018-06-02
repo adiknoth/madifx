@@ -3070,7 +3070,7 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 		levels->speed = mfx->speedmode;
 
 		s = copy_to_user(argp, levels,
-				 sizeof(struct madifx_level_buffer));
+				 sizeof(*levels);
 		if (0 != s) {
 			/* snd_printk(KERN_ERR "copy_to_user(.., .., %lu): %lu
 			 [Levels]\n", sizeof(struct madifx_peak_rms), s);
@@ -3151,7 +3151,7 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 		if (copy_from_user(&mixer, argp, sizeof(mixer)))
 			return -EFAULT;
 		if (copy_to_user((void __user *)mixer.mixer, mfx->newmixer,
-					sizeof(struct madifx_newmixer)))
+					sizeof(*mixer.mixer)))
 			return -EFAULT;
 		break;
 #endif /* CONFIG_SND_MADIFX_BROKEN */
@@ -3458,9 +3458,9 @@ static int snd_madifx_create(struct snd_card *card,
 	mfx->irq = pci->irq;
 
 	snd_printdd("kmalloc Mixer memory of %zd Bytes\n",
-			sizeof(struct madifx_newmixer));
+			sizeof(*mfx->newmixer));
 
-	mfx->newmixer = kzalloc(sizeof(struct madifx_newmixer), GFP_KERNEL);
+	mfx->newmixer = kzalloc(sizeof(*mfx->newmixer), GFP_KERNEL);
 	if (!mfx->newmixer) {
 		return -ENOMEM;
 	}
@@ -3611,7 +3611,7 @@ static int snd_madifx_probe(struct pci_dev *pci,
 	}
 
 	err = snd_card_new(&pci->dev, index[dev], id[dev],
-			THIS_MODULE, sizeof(struct mfx), &card);
+			THIS_MODULE, sizeof(*mfx), &card);
 	if (err < 0)
 		return err;
 
