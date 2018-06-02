@@ -1065,13 +1065,13 @@ static int snd_madifx_midi_output_close(struct snd_rawmidi_substream *substream)
 	return 0;
 }
 
-static struct snd_rawmidi_ops snd_madifx_midi_output = {
+static const struct snd_rawmidi_ops snd_madifx_midi_output = {
 	.open =		snd_madifx_midi_output_open,
 	.close =	snd_madifx_midi_output_close,
 	.trigger =	snd_madifx_midi_output_trigger,
 };
 
-static struct snd_rawmidi_ops snd_madifx_midi_input = {
+static const struct snd_rawmidi_ops snd_madifx_midi_input = {
 	.open =		snd_madifx_midi_input_open,
 	.close =	snd_madifx_midi_input_close,
 	.trigger =	snd_madifx_midi_input_trigger,
@@ -3161,7 +3161,7 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 	return 0;
 }
 
-static struct snd_pcm_ops snd_madifx_playback_ops = {
+static const struct snd_pcm_ops snd_madifx_playback_ops = {
 	.open = snd_madifx_playback_open,
 	.close = snd_madifx_playback_release,
 	.ioctl = snd_madifx_ioctl,
@@ -3173,7 +3173,7 @@ static struct snd_pcm_ops snd_madifx_playback_ops = {
 	.page = snd_pcm_sgbuf_ops_page,
 };
 
-static struct snd_pcm_ops snd_madifx_capture_ops = {
+static const struct snd_pcm_ops snd_madifx_capture_ops = {
 	.open = snd_madifx_capture_open,
 	.close = snd_madifx_capture_release,
 	.ioctl = snd_madifx_ioctl,
