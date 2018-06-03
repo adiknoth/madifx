@@ -568,7 +568,7 @@ static void madifx_silence_playback(struct mfx *mfx)
 {
 	void *buf = mfx->playback_buffer;
 
-	if (buf == NULL)
+	if (!buf)
 		return;
 
 	memset(buf, 0, OUTPUT_DMA_BUFFER_SIZE);
@@ -1855,7 +1855,7 @@ static int snd_madifx_create_controls(struct snd_card *card,
 		break;
 	}
 
-	if (NULL != list) {
+	if (list) {
 		for (idx = 0; idx < limit; idx++) {
 			err = snd_ctl_add(card,
 					snd_ctl_new1(&list[idx], mfx));
@@ -2865,7 +2865,7 @@ static int snd_madifx_playback_open(struct snd_pcm_substream *substream)
 
 	runtime->hw = snd_madifx_playback_subinfo;
 
-	if (mfx->capture_substream == NULL)
+	if (!mfx->capture_substream)
 		madifx_stop_audio(mfx);
 
 	mfx->playback_pid = current->pid;
@@ -2932,7 +2932,7 @@ static int snd_madifx_capture_open(struct snd_pcm_substream *substream)
 	snd_pcm_set_sync(substream);
 	runtime->hw = snd_madifx_capture_subinfo;
 
-	if (mfx->playback_substream == NULL)
+	if (!mfx->playback_substream)
 		madifx_stop_audio(mfx);
 
 	mfx->capture_pid = current->pid;
