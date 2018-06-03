@@ -1081,7 +1081,7 @@ static int snd_madifx_create_midi(struct snd_card *card,
 					    struct mfx *mfx, int id)
 {
 	int err;
-	char buf[32];
+	char buf[64];
 
 	mfx->midi[id].id = id;
 	mfx->midi[id].mfx = mfx;
@@ -1131,14 +1131,16 @@ static int snd_madifx_create_midi(struct snd_card *card,
 
 	}
 
-	sprintf(buf, "%s MIDIoverMADI %d", card->shortname, id+1);
+	snprintf(buf, sizeof(buf), "%s MIDIoverMADI %d", card->shortname, id+1);
 
 	err = snd_rawmidi_new(card, buf, id, 1, 1,
 			&mfx->midi[id].rmidi);
 	if (err < 0)
 		return err;
 
-	sprintf(mfx->midi[id].rmidi->name, "%s MIDI %d",
+	snprintf(mfx->midi[id].rmidi->name,
+			sizeof(mfx->midi[id].rmidi->name),
+			"%s MIDI %d",
 			card->id, id+1);
 	mfx->midi[id].rmidi->private_data = &mfx->midi[id];
 
@@ -3542,7 +3544,7 @@ static int snd_madifx_create(struct snd_card *card,
 			madifx_midi_tasklet, (unsigned long) mfx);
 
 
-	sprintf(card->id, "MADIFXtest");
+	snprintf(card->id, sizeof(card->id), "MADIFXtest");
 	snd_card_set_id(card, card->id);
 
 	snd_printdd("create alsa devices.\n");
@@ -3629,10 +3631,12 @@ static int snd_madifx_probe(struct pci_dev *pci,
 		goto free_card;
 	}
 
-	sprintf(card->shortname, "%s_%x",
+	snprintf(card->shortname, sizeof(card->shortname),
+			"%s_%x",
 			mfx->card_name,
 			mfx->serial);
-	sprintf(card->longname, "%s S/N 0x%x at 0x%lx, irq %d",
+	snprintf(card->longname, sizeof(card->shortname),
+			"%s S/N 0x%x at 0x%lx, irq %d",
 			mfx->card_name,
 			mfx->serial,
 			mfx->port, mfx->irq);
