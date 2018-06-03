@@ -2437,7 +2437,8 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 
 		if (snd_BUG_ON(channel >= mfx->max_channels_out)) {
 			dev_info(mfx->card->dev,
-				"snd_madifx_channel_info: output channel out of range (%d)\n",
+				"%s: output channel out of range (%d)\n",
+				__func__,
 				channel);
 			return -EINVAL;
 		}
@@ -2494,8 +2495,9 @@ static int snd_madifx_channel_info(struct snd_pcm_substream *substream,
 	} else {
 		if (snd_BUG_ON(channel >= mfx->max_channels_in)) {
 			dev_info(mfx->card->dev,
-				"snd_madifx_channel_info: input channel out of range (%d)\n",
-					channel);
+				"%s: input channel out of range (%d)\n",
+				__func__,
+				channel);
 			return -EINVAL;
 		}
 
@@ -3247,9 +3249,10 @@ static int snd_madifx_preallocate_memory(struct mfx *mfx)
 		snd_printdd("Could not preallocate %zd Bytes\n", wanted);
 
 		return err;
-	} else {
-		snd_printdd(" Preallocated %zd Bytes\n", wanted);
 	}
+
+	snd_printdd(" Preallocated %zd Bytes\n", wanted);
+
 
 #ifdef CONFIG_SND_MADIFX_BROKEN
 	/* allocate level buffer */
@@ -3388,7 +3391,8 @@ static int snd_madifx_create_alsa_devices(struct snd_card *card,
 }
 
 static int snd_madifx_create(struct snd_card *card,
-		struct mfx *mfx) {
+		struct mfx *mfx)
+{
 
 	struct pci_dev *pci = mfx->pci;
 	int err;
