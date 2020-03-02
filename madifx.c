@@ -33,6 +33,7 @@
 #include <linux/pci.h>
 #include <linux/math64.h>
 #include <linux/io.h>
+#include <linux/version.h>
 
 #include <sound/core.h>
 #include <sound/control.h>
@@ -3218,9 +3219,12 @@ static int snd_madifx_create_hwdep(struct snd_card *card,
  ------------------------------------------------------------*/
 static int snd_madifx_preallocate_memory(struct mfx *mfx)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0)
 	int err;
+#endif
 #ifdef CONFIG_SND_MADIFX_BROKEN
 	int i;
+	int err2;
 	int lpti; /* level page table index */
 	dma_addr_t levelPageTable[MADIFX_NUM_LEVEL_PAGES];
 #endif
@@ -3241,27 +3245,32 @@ static int snd_madifx_preallocate_memory(struct mfx *mfx)
 		return -ENOMEM;
 	}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0)
 	err =
+#endif
 	     snd_pcm_lib_preallocate_pages_for_all(pcm,
 						   SNDRV_DMA_TYPE_DEV_SG,
 						   snd_dma_pci_data(mfx->pci),
 						   wanted,
 						   wanted);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0)
 	if (err < 0) {
 		snd_printdd("Could not preallocate %zd Bytes\n", wanted);
 
 		return err;
 	}
+#endif
 
 	snd_printdd(" Preallocated %zd Bytes\n", wanted);
 
 
 #ifdef CONFIG_SND_MADIFX_BROKEN
 	/* allocate level buffer */
-	err = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV_SG,
+	err2 = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV_SG,
 			snd_dma_pci_data(mfx->pci),
 			MADIFX_LEVEL_BUFFER_SIZE, &mfx->dmaLevelBuffer);
-	if (err < 0) {
+	if (err2 < 0) {
 		dev_err(mfx->card->dev,
 			"MADIFX: Unable to allocate DMA level buffer\n");
 		return -ENOMEM;
