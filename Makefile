@@ -23,7 +23,7 @@ BINDIR := $(DESTDIR)/usr/local/bin
 INCDIR := $(DESTDIR)/usr/include/alsa/sound
 
 default::
-	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) EXTRA_CFLAGS="${DEBUG_CFLAGS} ${BROKEN}" modules
+	$(MAKE) -C $(KDIR) M=$(PWD) EXTRA_CFLAGS="${DEBUG_CFLAGS} ${BROKEN}" modules
 
 install-only:: default
 	mkdir -p $(MODDIR) $(BINDIR)
