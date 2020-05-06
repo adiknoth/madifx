@@ -3176,7 +3176,9 @@ static const struct snd_pcm_ops snd_madifx_playback_ops = {
 	.prepare = snd_madifx_prepare,
 	.trigger = snd_madifx_trigger,
 	.pointer = snd_madifx_hw_pointer,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 	.page = snd_pcm_sgbuf_ops_page,
+#endif
 };
 
 static const struct snd_pcm_ops snd_madifx_capture_ops = {
@@ -3188,7 +3190,9 @@ static const struct snd_pcm_ops snd_madifx_capture_ops = {
 	.prepare = snd_madifx_prepare,
 	.trigger = snd_madifx_trigger,
 	.pointer = snd_madifx_hw_pointer,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 	.page = snd_pcm_sgbuf_ops_page,
+#endif
 };
 
 static int snd_madifx_create_hwdep(struct snd_card *card,
