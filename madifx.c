@@ -3454,7 +3454,7 @@ static int snd_madifx_create(struct snd_card *card,
 	snd_printdd("grabbed memory region 0x%lx-0x%lx\n",
 			mfx->port, mfx->port + io_extent - 1);
 
-	mfx->iobase = ioremap_nocache(mfx->port, io_extent);
+	mfx->iobase = ioremap(mfx->port, io_extent);
 	if (!mfx->iobase) {
 		dev_err(mfx->card->dev,
 			"MADIFX: unable to remap region 0x%lx-0x%lx\n",
