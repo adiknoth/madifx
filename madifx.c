@@ -3250,7 +3250,11 @@ static int snd_madifx_preallocate_memory(struct mfx *mfx)
 #endif
 	     snd_pcm_lib_preallocate_pages_for_all(pcm,
 						   SNDRV_DMA_TYPE_DEV_SG,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
 						   snd_dma_pci_data(mfx->pci),
+#else
+                            &mfx->pci->dev,
+#endif
 						   wanted,
 						   wanted);
 
