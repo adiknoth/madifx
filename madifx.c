@@ -3176,7 +3176,9 @@ static const struct snd_pcm_ops snd_madifx_playback_ops = {
 	.prepare = snd_madifx_prepare,
 	.trigger = snd_madifx_trigger,
 	.pointer = snd_madifx_hw_pointer,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 	.page = snd_pcm_sgbuf_ops_page,
+#endif
 };
 
 static const struct snd_pcm_ops snd_madifx_capture_ops = {
@@ -3188,7 +3190,9 @@ static const struct snd_pcm_ops snd_madifx_capture_ops = {
 	.prepare = snd_madifx_prepare,
 	.trigger = snd_madifx_trigger,
 	.pointer = snd_madifx_hw_pointer,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 	.page = snd_pcm_sgbuf_ops_page,
+#endif
 };
 
 static int snd_madifx_create_hwdep(struct snd_card *card,
@@ -3250,7 +3254,11 @@ static int snd_madifx_preallocate_memory(struct mfx *mfx)
 #endif
 	     snd_pcm_lib_preallocate_pages_for_all(pcm,
 						   SNDRV_DMA_TYPE_DEV_SG,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
 						   snd_dma_pci_data(mfx->pci),
+#else
+                            &mfx->pci->dev,
+#endif
 						   wanted,
 						   wanted);
 
@@ -3450,7 +3458,7 @@ static int snd_madifx_create(struct snd_card *card,
 	snd_printdd("grabbed memory region 0x%lx-0x%lx\n",
 			mfx->port, mfx->port + io_extent - 1);
 
-	mfx->iobase = ioremap_nocache(mfx->port, io_extent);
+	mfx->iobase = ioremap(mfx->port, io_extent);
 	if (!mfx->iobase) {
 		dev_err(mfx->card->dev,
 			"MADIFX: unable to remap region 0x%lx-0x%lx\n",
