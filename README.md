@@ -18,6 +18,7 @@ problems and patches to improve the driver.
 
 ## NEWS
 
+* 2020-05-07: Updated driver source to compile on 5.5+ kernels.
 * 2020-03-02: Updated driver source to compile on 5.1+ kernels.
 * 2018-06-03: Updated driver source to compile on 4.15+ kernels.
 
