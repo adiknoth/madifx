@@ -3223,7 +3223,15 @@ static int snd_madifx_create_hwdep(struct snd_card *card,
  ------------------------------------------------------------*/
 static int snd_madifx_preallocate_memory(struct mfx *mfx)
 {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0)
+/*
+ * https://htrd.su/en/blog/2018/06/12/why_may_linux_driver_developer_hate_distros_like_centos/
+ * Thank you for this blog post, saved my day!
+ */
+#ifdef RHEL_RELEASE_CODE
+#define RH_NEW_AUDIO_STACK (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,5))
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0) && !defined(RH_NEW_AUDIO_STACK)
 	int err;
 #endif
 #ifdef CONFIG_SND_MADIFX_BROKEN
@@ -3249,7 +3257,7 @@ static int snd_madifx_preallocate_memory(struct mfx *mfx)
 		return -ENOMEM;
 	}
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0) && !defined(RH_NEW_AUDIO_STACK)
 	err =
 #endif
 	     snd_pcm_lib_preallocate_pages_for_all(pcm,
@@ -3262,7 +3270,7 @@ static int snd_madifx_preallocate_memory(struct mfx *mfx)
 						   wanted,
 						   wanted);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0) && !defined(RH_NEW_AUDIO_STACK)
 	if (err < 0) {
 		snd_printdd("Could not preallocate %zd Bytes\n", wanted);
 
