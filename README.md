@@ -18,13 +18,15 @@ problems and patches to improve the driver.
 
 ## NEWS
 
+* 2021-04-17: Add patch for CentOS7
 * 2020-05-07: Updated driver source to compile on 5.5+ kernels.
 * 2020-03-02: Updated driver source to compile on 5.1+ kernels.
 * 2018-06-03: Updated driver source to compile on 4.15+ kernels.
 
 ## Installation
 
-Clone this repository.
+Clone this repository. If you're on a CentOS kernel, don't patch anything.
+CentOS backports the new audio stack to their old kernels.
 
 For all kernels before 4.15, run
 
