@@ -374,7 +374,7 @@ struct mfx {
 	u32 settings_register;
 
 	struct madifx_midi midi[4];
-	struct tasklet_struct midi_tasklet;
+	struct work_struct midi_work;
 
 	size_t period_bytes;
 	unsigned char ss_in_channels;
@@ -1161,9 +1161,9 @@ static int snd_madifx_create_midi(struct snd_card *card,
 }
 
 
-static void madifx_midi_tasklet(struct tasklet_struct *t)
+static void madifx_midi_work(struct work_struct *work)
 {
-	struct mfx *mfx = from_tasklet(mfx, t, midi_tasklet);
+	struct mfx *mfx = container_of(work, struct mfx, midi_work);
 	int i = 0;
 
 	while (i < mfx->midiPorts) {
@@ -2166,7 +2166,7 @@ static irqreturn_t snd_madifx_interrupt(int irq, void *dev_id)
 		}
 
 		if (schedule)
-			tasklet_hi_schedule(&mfx->midi_tasklet);
+			queue_work(system_highpri_wq, &mfx->midi_work);
 	}
 
 	return IRQ_HANDLED;
@@ -3430,6 +3430,7 @@ static int snd_madifx_create(struct snd_card *card,
 	mfx->card = card;
 
 	spin_lock_init(&mfx->lock);
+	INIT_WORK(&mfx->midi_work, madifx_midi_work);
 
 	pci_read_config_word(mfx->pci,
 			PCI_CLASS_REVISION, &mfx->firmware_rev);
@@ -3565,9 +3566,6 @@ static int snd_madifx_create(struct snd_card *card,
 		break;
 	}
 
-	tasklet_setup(&mfx->midi_tasklet, madifx_midi_tasklet);
-
-
 	snprintf(card->id, sizeof(card->id), "MADIFXtest");
 	snd_card_set_id(card, card->id);
 
@@ -3586,6 +3584,7 @@ static int snd_madifx_free(struct mfx *mfx)
 {
 
 	if (mfx->port) {
+		cancel_work_sync(&mfx->midi_work);
 
 		/* stop th audio, and cancel all interrupts */
 		mfx->control_register &=
