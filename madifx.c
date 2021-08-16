@@ -1161,9 +1161,9 @@ static int snd_madifx_create_midi(struct snd_card *card,
 }
 
 
-static void madifx_midi_tasklet(unsigned long arg)
+static void madifx_midi_tasklet(struct tasklet_struct *t)
 {
-	struct mfx *mfx = (struct mfx *)arg;
+	struct mfx *mfx = from_tasklet(mfx, t, midi_tasklet);
 	int i = 0;
 
 	while (i < mfx->midiPorts) {
@@ -3565,8 +3565,7 @@ static int snd_madifx_create(struct snd_card *card,
 		break;
 	}
 
-	tasklet_init(&mfx->midi_tasklet,
-			madifx_midi_tasklet, (unsigned long) mfx);
+	tasklet_setup(&mfx->midi_tasklet, madifx_midi_tasklet);
 
 
 	snprintf(card->id, sizeof(card->id), "MADIFXtest");
