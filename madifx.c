@@ -3609,7 +3609,8 @@ static int snd_madifx_free(struct mfx *mfx)
 	if (mfx->port)
 		pci_release_regions(mfx->pci);
 
-	pci_disable_device(mfx->pci);
+	if (pci_is_enabled(mfx->pci))
+		pci_disable_device(mfx->pci);
 	return 0;
 }
 
