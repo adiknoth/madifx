@@ -68,7 +68,6 @@ MODULE_AUTHOR
 );
 MODULE_DESCRIPTION("RME MADIFX");
 MODULE_LICENSE("GPL");
-MODULE_SUPPORTED_DEVICE("{{RME HDSPM-MADIFX}}");
 
 /* --- Write registers. ---
   These are defined as byte-offsets from the iobase value.  */
