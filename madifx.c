@@ -3247,7 +3247,7 @@ static int snd_madifx_preallocate_memory(struct mfx *mfx)
 
 	wanted = max(INPUT_DMA_BUFFER_SIZE, OUTPUT_DMA_BUFFER_SIZE);
 
-	mfx->dmaPageTable = kzalloc(sizeof(dma_addr_t) *
+	mfx->dmaPageTable = devm_kzalloc(&mfx->pci->dev, sizeof(dma_addr_t) *
 			MADIFX_MAX_PAGE_TABLE_SIZE, GFP_KERNEL);
 
 	if (!mfx->dmaPageTable) {
@@ -3282,7 +3282,7 @@ static int snd_madifx_preallocate_memory(struct mfx *mfx)
 
 #ifdef CONFIG_SND_MADIFX_BROKEN
 	/* allocate level buffer */
-	err2 = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV_SG,
+	err2 = snd_devm_dma_alloc_pages(SNDRV_DMA_TYPE_DEV_SG,
 			snd_dma_pci_data(mfx->pci),
 			MADIFX_LEVEL_BUFFER_SIZE, &mfx->dmaLevelBuffer);
 	if (err2 < 0) {
@@ -3450,34 +3450,25 @@ static int snd_madifx_create(struct snd_card *card,
 		return -ENODEV;
 	}
 
-	err = pci_enable_device(pci);
+	err = pcim_enable_device(pci);
 	if (err < 0)
 		return err;
 
 	pci_set_master(mfx->pci);
 
-	err = pci_request_regions(pci, "mfx");
+	err = pcim_iomap_regions(pci, 1 << 0, "mfx");
 	if (err < 0)
 		return err;
 
 	mfx->port = pci_resource_start(pci, 0);
 	io_extent = pci_resource_len(pci, 0);
 
-	snd_printdd("grabbed memory region 0x%lx-0x%lx\n",
-			mfx->port, mfx->port + io_extent - 1);
-
-	mfx->iobase = ioremap(mfx->port, io_extent);
-	if (!mfx->iobase) {
-		dev_err(mfx->card->dev,
-			"MADIFX: unable to remap region 0x%lx-0x%lx\n",
-				mfx->port, mfx->port + io_extent - 1);
-		return -EBUSY;
-	}
+	mfx->iobase = pcim_iomap_table(pci)[0];
 	snd_printdd("remapped region (0x%lx) 0x%lx-0x%lx\n",
 			(unsigned long)mfx->iobase, mfx->port,
 			mfx->port + io_extent - 1);
 
-	if (request_irq(pci->irq, snd_madifx_interrupt,
+	if (devm_request_irq(&pci->dev, pci->irq, snd_madifx_interrupt,
 			IRQF_SHARED, KBUILD_MODNAME, mfx)) {
 		dev_err(mfx->card->dev,
 			"MADIFX: unable to use IRQ %d\n", pci->irq);
@@ -3491,7 +3482,7 @@ static int snd_madifx_create(struct snd_card *card,
 	snd_printdd("kmalloc Mixer memory of %zd Bytes\n",
 			sizeof(*mfx->newmixer));
 
-	mfx->newmixer = kzalloc(sizeof(*mfx->newmixer), GFP_KERNEL);
+	mfx->newmixer = devm_kzalloc(&pci->dev, sizeof(*mfx->newmixer), GFP_KERNEL);
 	if (!mfx->newmixer) {
 		return -ENOMEM;
 	}
@@ -3579,8 +3570,9 @@ static int snd_madifx_create(struct snd_card *card,
 }
 
 
-static int snd_madifx_free(struct mfx *mfx)
+static void snd_madifx_card_free(struct snd_card *card)
 {
+	struct mfx *mfx = card->private_data;
 
 	if (mfx->port) {
 		cancel_work_sync(&mfx->midi_work);
@@ -3595,32 +3587,9 @@ static int snd_madifx_free(struct mfx *mfx)
 		madifx_write(mfx, MADIFX_START_LEVEL, 0);
 	}
 
-	if (mfx->irq >= 0)
-		free_irq(mfx->irq, (void *) mfx);
-
-	kfree(mfx->newmixer);
-	kfree(mfx->dmaPageTable);
 #ifdef CONFIG_SND_MADIFX_BROKEN
 	snd_dma_free_pages(&(mfx->dmaLevelBuffer));
 #endif
-
-	iounmap(mfx->iobase);
-
-	if (mfx->port)
-		pci_release_regions(mfx->pci);
-
-	if (pci_is_enabled(mfx->pci))
-		pci_disable_device(mfx->pci);
-	return 0;
-}
-
-
-static void snd_madifx_card_free(struct snd_card *card)
-{
-	struct mfx *mfx = card->private_data;
-
-	if (mfx)
-		snd_madifx_free(mfx);
 }
 
 
@@ -3639,7 +3608,7 @@ static int snd_madifx_probe(struct pci_dev *pci,
 		return -ENOENT;
 	}
 
-	err = snd_card_new(&pci->dev, index[dev], id[dev],
+	err = snd_devm_card_new(&pci->dev, index[dev], id[dev],
 			THIS_MODULE, sizeof(*mfx), &card);
 	if (err < 0)
 		return err;
@@ -3651,7 +3620,7 @@ static int snd_madifx_probe(struct pci_dev *pci,
 
 	err = snd_madifx_create(card, mfx);
 	if (err < 0) {
-		goto free_card;
+		goto error;
 	}
 
 	snprintf(card->shortname, sizeof(card->shortname),
@@ -3666,7 +3635,7 @@ static int snd_madifx_probe(struct pci_dev *pci,
 
 	err = snd_card_register(card);
 	if (err < 0) {
-		goto free_card;
+		goto error;
 	}
 
 	pci_set_drvdata(pci, card);
@@ -3676,22 +3645,15 @@ static int snd_madifx_probe(struct pci_dev *pci,
 	dev++;
 	return 0;
 
-free_card:
+error:
 	snd_card_free(card);
 	return err;
-}
-
-static void snd_madifx_remove(struct pci_dev *pci)
-{
-	snd_card_free(pci_get_drvdata(pci));
-	pci_set_drvdata(pci, NULL);
 }
 
 static struct pci_driver madifx_driver = {
 	.name = KBUILD_MODNAME,
 	.id_table = snd_madifx_ids,
 	.probe = snd_madifx_probe,
-	.remove = snd_madifx_remove,
 };
 
 module_pci_driver(madifx_driver);
