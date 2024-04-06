@@ -305,7 +305,8 @@ enum {
 #define INPUT_DMA_BUFFER_SIZE (NUM_INPUTS_S_MFXT*32768)
 #define OUTPUT_DMA_BUFFER_SIZE (NUM_OUTPUTS_S_MFXT*32768)
 
-
+/* PCI Vendor id for HDSPe MADI FX (not found in linux headers) */
+#define PCI_VENDOR_ID_RME_MADI_FX 0x1d18
 
 /* names for speed modes */
 static char *madifx_speed_names[] = { "single", "double", "quad" };
@@ -442,6 +443,14 @@ struct mfx {
 static const struct pci_device_id snd_madifx_ids[] = {
 	{
 	 .vendor = PCI_VENDOR_ID_XILINX,
+	 .device = 0x3fc7,
+	 .subvendor = PCI_ANY_ID,
+	 .subdevice = PCI_ANY_ID,
+	 .class = 0,
+	 .class_mask = 0,
+	 .driver_data = 0},
+	 {
+	 .vendor = PCI_VENDOR_ID_RME_MADI_FX,
 	 .device = 0x3fc7,
 	 .subvendor = PCI_ANY_ID,
 	 .subdevice = PCI_ANY_ID,
