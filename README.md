@@ -78,6 +78,10 @@ as root. Use `alsamixer` or `amixer` to adjust settings.
 *   Adjustable mixer **NOT** working (needs new userspace tools)
 *   Levelmetering **NOT** working (maybe wrong, needs new userspace tools)
 
+## Signing the driver
+
+On modern Linux distributions, especially when SecureBoot comes into play, you might need to sign the driver prior to trying it out or to install it. [This StackExchange post](https://unix.stackexchange.com/a/751571) explains pretty well what is to be done.
+
 ## TODO
 
 *   Cleanup code (still contains plenty of the HDSPM driver)
