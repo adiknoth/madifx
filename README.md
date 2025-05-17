@@ -4,6 +4,9 @@ This repository contains a Linux kernel driver for RME MADI FX cards. It is
 still work in progress. Once finished, it'll be submitted to the mainline
 kernel.
 
+**Attention**: The driver only works with the _Legacy_ firmware (to date 219)
+and not the _DriverKit_ one (to date 220).
+
 **Until then, everything may change at any time, so don't expect the userpsace
 API to be stable.**
 
