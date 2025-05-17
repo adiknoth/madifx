@@ -18,6 +18,8 @@ problems and patches to improve the driver.
 
 ## NEWS
 
+* 2025-05-17: Add information on driver signing.
+* 2025-05-17: Update driver source to compile on 6.12+ kernels.
 * 2021-08-16: Update driver source to compile on 5.12+ kernels.
 * 2021-04-17: Add patch for CentOS7
 * 2020-05-07: Updated driver source to compile on 5.5+ kernels.
