@@ -45,6 +45,11 @@
 #include <sound/hwdep.h>
 #include <sound/initval.h>
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
+	#define from_timer timer_container_of
+	#define del_timer  timer_delete
+#endif
+
 #include "madifx.h"
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX; /* Index 0-MAX */
