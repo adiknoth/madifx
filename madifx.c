@@ -2350,8 +2350,9 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 
 		mfx->playback_buffer =
 			(unsigned char *) substream->runtime->dma_area;
-		pr_debug("Allocated sample buffer for playback at %p\n",
-				mfx->playback_buffer);
+		dev_dbg(mfx->card->dev,
+			"Allocated sample buffer for playback at %p\n",
+			mfx->playback_buffer);
 	} else {
 		/* initialise default DMA table. Will be
 		 * overwritten in a second. */
@@ -2387,8 +2388,9 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 
 		mfx->capture_buffer =
 			(unsigned char *) substream->runtime->dma_area;
-		pr_debug("Allocated sample buffer for capture at %p\n",
-				mfx->capture_buffer);
+		dev_dbg(mfx->card->dev,
+			"Allocated sample buffer for capture at %p\n",
+			mfx->capture_buffer);
 	}
 
 	/* Switch to native float format if requested */
@@ -3273,13 +3275,13 @@ static int snd_madifx_preallocate_memory(struct mfx *mfx)
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0) && !defined(RH_NEW_AUDIO_STACK)
 	if (err < 0) {
-		pr_debug("Could not preallocate %zd Bytes\n", wanted);
+		dev_dbg(mfx->card->dev, "Could not preallocate %zd Bytes\n", wanted);
 
 		return err;
 	}
 #endif
 
-	pr_debug(" Preallocated %zd Bytes\n", wanted);
+	dev_dbg(mfx->card->dev, " Preallocated %zd Bytes\n", wanted);
 
 
 #ifdef CONFIG_SND_MADIFX_BROKEN
@@ -3361,7 +3363,7 @@ static int snd_madifx_create_alsa_devices(struct snd_card *card,
 {
 	int err, i;
 
-	pr_debug("Create card...\n");
+	dev_dbg(mfx->card->dev, "Create card...\n");
 	err = snd_madifx_create_pcm(card, mfx);
 	if (err < 0)
 		return err;
@@ -3382,7 +3384,7 @@ static int snd_madifx_create_alsa_devices(struct snd_card *card,
 	if (err < 0)
 		return err;
 
-	pr_debug("proc init...\n");
+	dev_dbg(mfx->card->dev, "proc init...\n");
 	snd_madifx_proc_init(mfx);
 
 	mfx->system_sample_rate = -1;
@@ -3393,18 +3395,18 @@ static int snd_madifx_create_alsa_devices(struct snd_card *card,
 	mfx->capture_substream = NULL;
 	mfx->playback_substream = NULL;
 
-	pr_debug("Set defaults...\n");
+	dev_dbg(mfx->card->dev, "Set defaults...\n");
 	err = snd_madifx_set_defaults(mfx);
 	if (err < 0)
 		return err;
 
-	pr_debug("Update mixer controls...\n");
+	dev_dbg(mfx->card->dev, "Update mixer controls...\n");
 #if 0
 	/* FIXME: MADI FX disable, old mixer is broken */
 	madifx_update_simple_mixer_controls(mfx);
 #endif
 
-	pr_debug("Initializeing complete ???\n");
+	dev_dbg(mfx->card->dev, "Initializeing complete ???\n");
 
 	err = snd_card_register(card);
 	if (err < 0) {
@@ -3413,7 +3415,7 @@ static int snd_madifx_create_alsa_devices(struct snd_card *card,
 		return err;
 	}
 
-	pr_debug("... yes now\n");
+	dev_dbg(mfx->card->dev, "... yes now\n");
 
 	return 0;
 }
@@ -3466,9 +3468,9 @@ static int snd_madifx_create(struct snd_card *card,
 	io_extent = pci_resource_len(pci, 0);
 
 	mfx->iobase = pcim_iomap_table(pci)[0];
-	pr_debug("remapped region (0x%lx) 0x%lx-0x%lx\n",
-			(unsigned long)mfx->iobase, mfx->port,
-			mfx->port + io_extent - 1);
+	dev_dbg(mfx->card->dev, "remapped region (0x%lx) 0x%lx-0x%lx\n",
+		(unsigned long)mfx->iobase, mfx->port,
+		mfx->port + io_extent - 1);
 
 	if (devm_request_irq(&pci->dev, pci->irq, snd_madifx_interrupt,
 			IRQF_SHARED, KBUILD_MODNAME, mfx)) {
@@ -3477,12 +3479,12 @@ static int snd_madifx_create(struct snd_card *card,
 		return -EBUSY;
 	}
 
-	pr_debug("use IRQ %d\n", pci->irq);
+	dev_dbg(mfx->card->dev, "use IRQ %d\n", pci->irq);
 
 	mfx->irq = pci->irq;
 
-	pr_debug("kmalloc Mixer memory of %zd Bytes\n",
-			sizeof(*mfx->newmixer));
+	dev_dbg(mfx->card->dev, "kmalloc Mixer memory of %zd Bytes\n",
+		sizeof(*mfx->newmixer));
 
 	mfx->newmixer = devm_kzalloc(&pci->dev, sizeof(*mfx->newmixer), GFP_KERNEL);
 	if (!mfx->newmixer) {
@@ -3561,7 +3563,7 @@ static int snd_madifx_create(struct snd_card *card,
 	snprintf(card->id, sizeof(card->id), "MADIFXtest");
 	snd_card_set_id(card, card->id);
 
-	pr_debug("create alsa devices.\n");
+	dev_dbg(mfx->card->dev, "create alsa devices.\n");
 	err = snd_madifx_create_alsa_devices(card, mfx);
 	if (err < 0)
 		return err;
