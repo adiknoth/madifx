@@ -3212,7 +3212,7 @@ static int snd_madifx_create_hwdep(struct snd_card *card,
 
 	mfx->hwdep = hw;
 	hw->private_data = mfx;
-	strcpy(hw->name, "MADIFX hwdep interface");
+	strscpy(hw->name, "MADIFX hwdep interface");
 
 	hw->ops.open = snd_madifx_hwdep_dummy_op;
 	hw->ops.ioctl = snd_madifx_hwdep_ioctl;
@@ -3336,7 +3336,7 @@ static int snd_madifx_create_pcm(struct snd_card *card,
 
 	mfx->pcm = pcm;
 	pcm->private_data = mfx;
-	strcpy(pcm->name, mfx->card_name);
+	strscpy(pcm->name, mfx->card_name);
 
 	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK,
 			&snd_madifx_playback_ops);
@@ -3440,8 +3440,8 @@ static int snd_madifx_create(struct snd_card *card,
 	pci_read_config_word(mfx->pci,
 			PCI_CLASS_REVISION, &mfx->firmware_rev);
 
-	strcpy(card->mixername, "Xilinx FPGA");
-	strcpy(card->driver, "MADIFX");
+	strscpy(card->mixername, "Xilinx FPGA");
+	strscpy(card->driver, "MADIFX");
 
 	switch (mfx->firmware_rev) {
 	case HDSPM_MADIFX_REV:
