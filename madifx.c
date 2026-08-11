@@ -876,7 +876,9 @@ static inline int snd_madifx_midi_output_possible(struct mfx *mfx, int id)
 
 static void snd_madifx_flush_midi_input(struct mfx *mfx, int id)
 {
-	while (snd_madifx_midi_input_available(mfx, id))
+	int count = 256;
+
+	while (snd_madifx_midi_input_available(mfx, id) && --count)
 		snd_madifx_midi_read_byte(mfx, id);
 }
 
