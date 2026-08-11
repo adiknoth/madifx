@@ -3462,14 +3462,13 @@ static int snd_madifx_create(struct snd_card *card,
 
 	pci_set_master(mfx->pci);
 
-	err = pcim_iomap_regions(pci, 1 << 0, "mfx");
-	if (err < 0)
-		return err;
+	mfx->iobase = pcim_iomap_region(pci, 0, "mfx");
+	if (IS_ERR(mfx->iobase))
+		return PTR_ERR(mfx->iobase);
 
 	mfx->port = pci_resource_start(pci, 0);
 	io_extent = pci_resource_len(pci, 0);
 
-	mfx->iobase = pcim_iomap_table(pci)[0];
 	pr_debug("remapped region (0x%lx) 0x%lx-0x%lx\n",
 			(unsigned long)mfx->iobase, mfx->port,
 			mfx->port + io_extent - 1);
