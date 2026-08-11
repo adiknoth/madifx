@@ -2350,7 +2350,8 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 
 		mfx->playback_buffer =
 			(unsigned char *) substream->runtime->dma_area;
-		pr_debug("Allocated sample buffer for playback at %p\n",
+		pr_debug("Allocated sample buffer for %s at %p\n",
+				snd_pcm_direction_name(substream->stream),
 				mfx->playback_buffer);
 	} else {
 		/* initialise default DMA table. Will be
@@ -2387,7 +2388,8 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 
 		mfx->capture_buffer =
 			(unsigned char *) substream->runtime->dma_area;
-		pr_debug("Allocated sample buffer for capture at %p\n",
+		pr_debug("Allocated sample buffer for %s at %p\n",
+				snd_pcm_direction_name(substream->stream),
 				mfx->capture_buffer);
 	}
 
