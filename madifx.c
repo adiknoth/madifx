@@ -876,7 +876,9 @@ static inline int snd_madifx_midi_output_possible(struct mfx *mfx, int id)
 
 static void snd_madifx_flush_midi_input(struct mfx *mfx, int id)
 {
-	while (snd_madifx_midi_input_available(mfx, id))
+	int count = 256;
+
+	while (snd_madifx_midi_input_available(mfx, id) && --count)
 		snd_madifx_midi_read_byte(mfx, id);
 }
 
@@ -979,7 +981,7 @@ snd_madifx_midi_input_trigger(struct snd_rawmidi_substream *substream, int up)
 
 static void snd_madifx_midi_output_timer(struct timer_list *t)
 {
-	struct madifx_midi *hmidi = from_timer(hmidi, t, timer);
+	struct madifx_midi *hmidi = timer_container_of(hmidi, t, timer);
 	unsigned long flags;
 
 	snd_madifx_midi_output_write(hmidi);
@@ -1014,7 +1016,7 @@ snd_madifx_midi_output_trigger(struct snd_rawmidi_substream *substream, int up)
 		}
 	} else {
 		if (hmidi->istimer && --hmidi->istimer <= 0)
-			del_timer(&hmidi->timer);
+			timer_delete(&hmidi->timer);
 	}
 	spin_unlock_irqrestore(&hmidi->lock, flags);
 	if (up)
@@ -2350,8 +2352,8 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 
 		mfx->playback_buffer =
 			(unsigned char *) substream->runtime->dma_area;
-		dev_dbg(mfx->card->dev,
-			"Allocated sample buffer for playback at %p\n",
+		dev_dbg(mfx->card->dev, "Allocated sample buffer for %s at %p\n",
+			snd_pcm_direction_name(substream->stream),
 			mfx->playback_buffer);
 	} else {
 		/* initialise default DMA table. Will be
@@ -2388,8 +2390,8 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 
 		mfx->capture_buffer =
 			(unsigned char *) substream->runtime->dma_area;
-		dev_dbg(mfx->card->dev,
-			"Allocated sample buffer for capture at %p\n",
+		dev_dbg(mfx->card->dev, "Allocated sample buffer for %s at %p\n",
+			snd_pcm_direction_name(substream->stream),
 			mfx->capture_buffer);
 	}
 
@@ -3210,7 +3212,7 @@ static int snd_madifx_create_hwdep(struct snd_card *card,
 
 	mfx->hwdep = hw;
 	hw->private_data = mfx;
-	strcpy(hw->name, "MADIFX hwdep interface");
+	strscpy(hw->name, "MADIFX hwdep interface");
 
 	hw->ops.open = snd_madifx_hwdep_dummy_op;
 	hw->ops.ioctl = snd_madifx_hwdep_ioctl;
@@ -3334,7 +3336,7 @@ static int snd_madifx_create_pcm(struct snd_card *card,
 
 	mfx->pcm = pcm;
 	pcm->private_data = mfx;
-	strcpy(pcm->name, mfx->card_name);
+	strscpy(pcm->name, mfx->card_name);
 
 	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK,
 			&snd_madifx_playback_ops);
@@ -3438,8 +3440,8 @@ static int snd_madifx_create(struct snd_card *card,
 	pci_read_config_word(mfx->pci,
 			PCI_CLASS_REVISION, &mfx->firmware_rev);
 
-	strcpy(card->mixername, "Xilinx FPGA");
-	strcpy(card->driver, "MADIFX");
+	strscpy(card->mixername, "Xilinx FPGA");
+	strscpy(card->driver, "MADIFX");
 
 	switch (mfx->firmware_rev) {
 	case HDSPM_MADIFX_REV:
@@ -3460,14 +3462,13 @@ static int snd_madifx_create(struct snd_card *card,
 
 	pci_set_master(mfx->pci);
 
-	err = pcim_iomap_regions(pci, 1 << 0, "mfx");
-	if (err < 0)
-		return err;
+	mfx->iobase = pcim_iomap_region(pci, 0, "mfx");
+	if (IS_ERR(mfx->iobase))
+		return PTR_ERR(mfx->iobase);
 
 	mfx->port = pci_resource_start(pci, 0);
 	io_extent = pci_resource_len(pci, 0);
 
-	mfx->iobase = pcim_iomap_table(pci)[0];
 	dev_dbg(mfx->card->dev, "remapped region (0x%lx) 0x%lx-0x%lx\n",
 		(unsigned long)mfx->iobase, mfx->port,
 		mfx->port + io_extent - 1);
