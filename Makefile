@@ -14,7 +14,7 @@ endif
 
 DEBUG_CFLAGS=-g -Wall -Werror
 
-snd-madifx-objs := madifx.o
+snd-madifx-y := madifx.o
 
 KDIR   := /lib/modules/$(KERNEL_VERSION)/build
 PWD    := $(shell pwd)
