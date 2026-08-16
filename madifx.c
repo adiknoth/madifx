@@ -513,16 +513,11 @@ static inline void snd_madifx_enable_out(struct mfx *mfx, int i, int v)
 /* check if same process is writing and reading */
 static int snd_madifx_use_is_exclusive(struct mfx *mfx)
 {
-	unsigned long flags;
-	int ret = 1;
-
-	spin_lock_irqsave(&mfx->lock, flags);
+	guard(spinlock_irqsave)(&mfx->lock);
 	if ((mfx->playback_pid != mfx->capture_pid) &&
-	    (mfx->playback_pid >= 0) && (mfx->capture_pid >= 0)) {
-		ret = 0;
-	}
-	spin_unlock_irqrestore(&mfx->lock, flags);
-	return ret;
+	    (mfx->playback_pid >= 0) && (mfx->capture_pid >= 0))
+		return 0;
+	return 1;
 }
 
 
@@ -587,7 +582,7 @@ static int madifx_set_interrupt_interval(struct mfx *s, unsigned int frames)
 {
 	int n;
 
-	spin_lock_irq(&s->lock);
+	guard(spinlock_irq)(&s->lock);
 
 	/* FIXME: We have four bits, but we don't know the mapping to frames,
 	 * yet.
@@ -611,8 +606,6 @@ static int madifx_set_interrupt_interval(struct mfx *s, unsigned int frames)
 	madifx_write(s, MADIFX_CONTROL_REG, s->control_register);
 
 	madifx_compute_period_size(s);
-
-	spin_unlock_irq(&s->lock);
 
 	return 0;
 }
@@ -884,7 +877,6 @@ static void snd_madifx_flush_midi_input(struct mfx *mfx, int id)
 
 static int snd_madifx_midi_output_write(struct madifx_midi *hmidi)
 {
-	unsigned long flags;
 	int n_pending;
 	int to_write;
 	int i;
@@ -892,7 +884,7 @@ static int snd_madifx_midi_output_write(struct madifx_midi *hmidi)
 
 	/* Output is not interrupt driven */
 
-	spin_lock_irqsave(&hmidi->lock, flags);
+	guard(spinlock_irqsave)(&hmidi->lock);
 	if (hmidi->output &&
 	    !snd_rawmidi_transmit_empty(hmidi->output)) {
 		n_pending = snd_madifx_midi_output_possible(hmidi->mfx,
@@ -911,7 +903,6 @@ static int snd_madifx_midi_output_write(struct madifx_midi *hmidi)
 			}
 		}
 	}
-	spin_unlock_irqrestore(&hmidi->lock, flags);
 	return 0;
 }
 
@@ -920,37 +911,36 @@ static int snd_madifx_midi_input_read(struct madifx_midi *hmidi)
 	unsigned char buf[128]; /* this buffer is designed to match the MIDI
 				 * input FIFO size
 				 */
-	unsigned long flags;
 	int n_pending;
 	int i;
 
-	spin_lock_irqsave(&hmidi->lock, flags);
-	n_pending = snd_madifx_midi_input_available(hmidi->mfx, hmidi->id);
-	if (n_pending > 0) {
-		if (hmidi->input) {
-			if (n_pending > (int)sizeof(buf))
-				n_pending = sizeof(buf);
-			for (i = 0; i < n_pending; ++i)
-				buf[i] = snd_madifx_midi_read_byte(hmidi->mfx,
-								   hmidi->id);
-			if (n_pending)
-				snd_rawmidi_receive(hmidi->input, buf,
-						     n_pending);
-		} else {
-			/* flush the MIDI input FIFO */
-			while (n_pending--)
-				snd_madifx_midi_read_byte(hmidi->mfx,
-							  hmidi->id);
+	scoped_guard(spinlock_irqsave, &hmidi->lock) {
+		n_pending = snd_madifx_midi_input_available(hmidi->mfx, hmidi->id);
+		if (n_pending > 0) {
+			if (hmidi->input) {
+				if (n_pending > (int)sizeof(buf))
+					n_pending = sizeof(buf);
+				for (i = 0; i < n_pending; ++i)
+					buf[i] = snd_madifx_midi_read_byte(hmidi->mfx,
+									   hmidi->id);
+				if (n_pending)
+					snd_rawmidi_receive(hmidi->input, buf,
+							     n_pending);
+			} else {
+				/* flush the MIDI input FIFO */
+				while (n_pending--)
+					snd_madifx_midi_read_byte(hmidi->mfx,
+								  hmidi->id);
+			}
 		}
+		hmidi->pending = 0;
 	}
-	hmidi->pending = 0;
-	spin_unlock_irqrestore(&hmidi->lock, flags);
 
-	spin_lock_irqsave(&hmidi->mfx->lock, flags);
-	hmidi->mfx->control_register |= hmidi->ie;
-	madifx_write(hmidi->mfx, MADIFX_CONTROL_REG,
-		    hmidi->mfx->control_register);
-	spin_unlock_irqrestore(&hmidi->mfx->lock, flags);
+	scoped_guard(spinlock_irqsave, &hmidi->mfx->lock) {
+		hmidi->mfx->control_register |= hmidi->ie;
+		madifx_write(hmidi->mfx, MADIFX_CONTROL_REG,
+			    hmidi->mfx->control_register);
+	}
 
 	return snd_madifx_midi_output_write(hmidi);
 }
@@ -960,12 +950,11 @@ snd_madifx_midi_input_trigger(struct snd_rawmidi_substream *substream, int up)
 {
 	struct mfx *mfx;
 	struct madifx_midi *hmidi;
-	unsigned long flags;
 
 	hmidi = substream->rmidi->private_data;
 	mfx = hmidi->mfx;
 
-	spin_lock_irqsave(&mfx->lock, flags);
+	guard(spinlock_irqsave)(&mfx->lock);
 	if (up) {
 		if (!(mfx->control_register & hmidi->ie)) {
 			snd_madifx_flush_midi_input(mfx, hmidi->id);
@@ -976,16 +965,14 @@ snd_madifx_midi_input_trigger(struct snd_rawmidi_substream *substream, int up)
 	}
 
 	madifx_write(mfx, MADIFX_CONTROL_REG, mfx->control_register);
-	spin_unlock_irqrestore(&mfx->lock, flags);
 }
 
 static void snd_madifx_midi_output_timer(struct timer_list *t)
 {
 	struct madifx_midi *hmidi = timer_container_of(hmidi, t, timer);
-	unsigned long flags;
 
 	snd_madifx_midi_output_write(hmidi);
-	spin_lock_irqsave(&hmidi->lock, flags);
+	guard(spinlock_irqsave)(&hmidi->lock);
 
 	/* this does not bump hmidi->istimer, because the
 	   kernel automatically removed the timer when it
@@ -995,30 +982,27 @@ static void snd_madifx_midi_output_timer(struct timer_list *t)
 
 	if (hmidi->istimer)
 		mod_timer(&hmidi->timer, 1 + jiffies);
-
-	spin_unlock_irqrestore(&hmidi->lock, flags);
 }
 
 static void
 snd_madifx_midi_output_trigger(struct snd_rawmidi_substream *substream, int up)
 {
 	struct madifx_midi *hmidi;
-	unsigned long flags;
 
 	hmidi = substream->rmidi->private_data;
-	spin_lock_irqsave(&hmidi->lock, flags);
-	if (up) {
-		if (!hmidi->istimer) {
-			timer_setup(&hmidi->timer,
-					snd_madifx_midi_output_timer, 0);
-			mod_timer(&hmidi->timer, 1 + jiffies);
-			hmidi->istimer++;
+	scoped_guard(spinlock_irqsave, &hmidi->lock) {
+		if (up) {
+			if (!hmidi->istimer) {
+				timer_setup(&hmidi->timer,
+						snd_madifx_midi_output_timer, 0);
+				mod_timer(&hmidi->timer, 1 + jiffies);
+				hmidi->istimer++;
+			}
+		} else {
+			if (hmidi->istimer && --hmidi->istimer <= 0)
+				timer_delete(&hmidi->timer);
 		}
-	} else {
-		if (hmidi->istimer && --hmidi->istimer <= 0)
-			timer_delete(&hmidi->timer);
 	}
-	spin_unlock_irqrestore(&hmidi->lock, flags);
 	if (up)
 		snd_madifx_midi_output_write(hmidi);
 }
@@ -1028,10 +1012,9 @@ static int snd_madifx_midi_input_open(struct snd_rawmidi_substream *substream)
 	struct madifx_midi *hmidi;
 
 	hmidi = substream->rmidi->private_data;
-	spin_lock_irq(&hmidi->lock);
+	guard(spinlock_irq)(&hmidi->lock);
 	snd_madifx_flush_midi_input(hmidi->mfx, hmidi->id);
 	hmidi->input = substream;
-	spin_unlock_irq(&hmidi->lock);
 
 	return 0;
 }
@@ -1041,9 +1024,8 @@ static int snd_madifx_midi_output_open(struct snd_rawmidi_substream *substream)
 	struct madifx_midi *hmidi;
 
 	hmidi = substream->rmidi->private_data;
-	spin_lock_irq(&hmidi->lock);
+	guard(spinlock_irq)(&hmidi->lock);
 	hmidi->output = substream;
-	spin_unlock_irq(&hmidi->lock);
 
 	return 0;
 }
@@ -1055,9 +1037,8 @@ static int snd_madifx_midi_input_close(struct snd_rawmidi_substream *substream)
 	snd_madifx_midi_input_trigger(substream, 0);
 
 	hmidi = substream->rmidi->private_data;
-	spin_lock_irq(&hmidi->lock);
+	guard(spinlock_irq)(&hmidi->lock);
 	hmidi->input = NULL;
-	spin_unlock_irq(&hmidi->lock);
 
 	return 0;
 }
@@ -1069,9 +1050,8 @@ static int snd_madifx_midi_output_close(struct snd_rawmidi_substream *substream)
 	snd_madifx_midi_output_trigger(substream, 0);
 
 	hmidi = substream->rmidi->private_data;
-	spin_lock_irq(&hmidi->lock);
+	guard(spinlock_irq)(&hmidi->lock);
 	hmidi->output = NULL;
-	spin_unlock_irq(&hmidi->lock);
 
 	return 0;
 }
@@ -1538,12 +1518,11 @@ static int snd_madifx_put_clock_source(struct snd_kcontrol *kcontrol,
 		val = 0;
 	if (val > 9)
 		val = 9;
-	spin_lock_irq(&mfx->lock);
+	guard(spinlock_irq)(&mfx->lock);
 	if (val != madifx_clock_source(mfx))
 		change = (madifx_set_clock_source(mfx, val) == 0) ? 1 : 0;
 	else
 		change = 0;
-	spin_unlock_irq(&mfx->lock);
 	return change;
 }
 
@@ -1657,11 +1636,10 @@ static int snd_madifx_put_clock_select(struct snd_kcontrol *kcontrol,
 	else if (val >= mfx->texts_clocksource_items)
 		val = mfx->texts_clocksource_items-1;
 
-	spin_lock_irq(&mfx->lock);
+	guard(spinlock_irq)(&mfx->lock);
 	if (val != madifx_get_clock_select(mfx))
 		change = (0 == madifx_set_clock_select(mfx, val)) ? 1 : 0;
 
-	spin_unlock_irq(&mfx->lock);
 	return change;
 }
 
@@ -1699,10 +1677,9 @@ static int snd_madifx_get_toggle_setting(struct snd_kcontrol *kcontrol,
 {
 	struct mfx *mfx = snd_kcontrol_chip(kcontrol);
 
-	spin_lock_irq(&mfx->lock);
+	guard(spinlock_irq)(&mfx->lock);
 	ucontrol->value.integer.value[0] = madifx_read_toggle_setting(mfx,
 			kcontrol->private_value);
-	spin_unlock_irq(&mfx->lock);
 	return 0;
 }
 
@@ -1717,10 +1694,9 @@ static int snd_madifx_put_toggle_setting(struct snd_kcontrol *kcontrol,
 	if (!snd_madifx_use_is_exclusive(mfx))
 		return -EBUSY;
 	val = ucontrol->value.integer.value[0] & 1;
-	spin_lock_irq(&mfx->lock);
+	guard(spinlock_irq)(&mfx->lock);
 	change = (int) val != madifx_read_toggle_setting(mfx, reg);
 	madifx_set_toggle_setting(mfx, reg, val);
-	spin_unlock_irq(&mfx->lock);
 	return change;
 }
 
@@ -2235,53 +2211,49 @@ static int snd_madifx_hw_params(struct snd_pcm_substream *substream,
 	pid_t this_pid;
 	pid_t other_pid;
 
-	spin_lock_irq(&mfx->lock);
-
-	if (substream->pstr->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		this_pid = mfx->playback_pid;
-		other_pid = mfx->capture_pid;
-	} else {
-		this_pid = mfx->capture_pid;
-		other_pid = mfx->playback_pid;
-	}
-
-	if (other_pid > 0 && this_pid != other_pid) {
-
-		/* The other stream is open, and not by the same
-		   task as this one. Make sure that the parameters
-		   that matter are the same.
-		   */
-
-		if (params_rate(params) != mfx->system_sample_rate) {
-			spin_unlock_irq(&mfx->lock);
-			_snd_pcm_hw_param_setempty(params,
-					SNDRV_PCM_HW_PARAM_RATE);
-			return -EBUSY;
+	scoped_guard(spinlock_irq, &mfx->lock) {
+		if (substream->pstr->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			this_pid = mfx->playback_pid;
+			other_pid = mfx->capture_pid;
+		} else {
+			this_pid = mfx->capture_pid;
+			other_pid = mfx->playback_pid;
 		}
 
-		if (params_period_size(params) != mfx->period_bytes / 4) {
-			spin_unlock_irq(&mfx->lock);
-			_snd_pcm_hw_param_setempty(params,
-					SNDRV_PCM_HW_PARAM_PERIOD_SIZE);
-			return -EBUSY;
-		}
+		if (other_pid > 0 && this_pid != other_pid) {
 
+			/* The other stream is open, and not by the same
+			   task as this one. Make sure that the parameters
+			   that matter are the same.
+			   */
+
+			if (params_rate(params) != mfx->system_sample_rate) {
+				_snd_pcm_hw_param_setempty(params,
+						SNDRV_PCM_HW_PARAM_RATE);
+				return -EBUSY;
+			}
+
+			if (params_period_size(params) != mfx->period_bytes / 4) {
+				_snd_pcm_hw_param_setempty(params,
+						SNDRV_PCM_HW_PARAM_PERIOD_SIZE);
+				return -EBUSY;
+			}
+
+		}
 	}
 	/* We're fine. */
-	spin_unlock_irq(&mfx->lock);
 
 	/* how to make sure that the rate matches an externally-set one ?   */
 
-	spin_lock_irq(&mfx->lock);
-	err = madifx_set_rate(mfx, params_rate(params), 0);
-	if (err < 0) {
-		dev_info(mfx->card->dev, "err on madifx_set_rate: %d\n", err);
-		spin_unlock_irq(&mfx->lock);
-		_snd_pcm_hw_param_setempty(params,
-				SNDRV_PCM_HW_PARAM_RATE);
-		return err;
+	scoped_guard(spinlock_irq, &mfx->lock) {
+		err = madifx_set_rate(mfx, params_rate(params), 0);
+		if (err < 0) {
+			dev_info(mfx->card->dev, "err on madifx_set_rate: %d\n", err);
+			_snd_pcm_hw_param_setempty(params,
+					SNDRV_PCM_HW_PARAM_RATE);
+			return err;
+		}
 	}
-	spin_unlock_irq(&mfx->lock);
 
 	err = madifx_set_interrupt_interval(mfx,
 			params_period_size(params));
@@ -2588,60 +2560,59 @@ static int snd_madifx_trigger(struct snd_pcm_substream *substream, int cmd)
 	struct snd_pcm_substream *other;
 	int running;
 
-	spin_lock(&mfx->lock);
-	running = mfx->running;
-	switch (cmd) {
-	case SNDRV_PCM_TRIGGER_START:
-		running |= 1 << substream->stream;
-		break;
-	case SNDRV_PCM_TRIGGER_STOP:
-		running &= ~(1 << substream->stream);
-		break;
-	default:
-		snd_BUG();
-		spin_unlock(&mfx->lock);
-		return -EINVAL;
-	}
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		other = mfx->capture_substream;
-	else
-		other = mfx->playback_substream;
+	scoped_guard(spinlock, &mfx->lock) {
+		running = mfx->running;
+		switch (cmd) {
+		case SNDRV_PCM_TRIGGER_START:
+			running |= 1 << substream->stream;
+			break;
+		case SNDRV_PCM_TRIGGER_STOP:
+			running &= ~(1 << substream->stream);
+			break;
+		default:
+			snd_BUG();
+			return -EINVAL;
+		}
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+			other = mfx->capture_substream;
+		else
+			other = mfx->playback_substream;
 
-	if (other) {
-		struct snd_pcm_substream *s;
+		if (other) {
+			struct snd_pcm_substream *s;
 
-		snd_pcm_group_for_each_entry(s, substream) {
-			if (s == other) {
-				snd_pcm_trigger_done(s, substream);
-				if (cmd == SNDRV_PCM_TRIGGER_START)
-					running |= 1 << s->stream;
-				else
-					running &= ~(1 << s->stream);
-				goto _ok;
+			snd_pcm_group_for_each_entry(s, substream) {
+				if (s == other) {
+					snd_pcm_trigger_done(s, substream);
+					if (cmd == SNDRV_PCM_TRIGGER_START)
+						running |= 1 << s->stream;
+					else
+						running &= ~(1 << s->stream);
+					goto _ok;
+				}
 			}
-		}
-		if (cmd == SNDRV_PCM_TRIGGER_START) {
-			if (!(running & (1 << SNDRV_PCM_STREAM_PLAYBACK))
-					&& substream->stream ==
-					SNDRV_PCM_STREAM_CAPTURE)
-				madifx_silence_playback(mfx);
+			if (cmd == SNDRV_PCM_TRIGGER_START) {
+				if (!(running & (1 << SNDRV_PCM_STREAM_PLAYBACK))
+						&& substream->stream ==
+						SNDRV_PCM_STREAM_CAPTURE)
+					madifx_silence_playback(mfx);
+			} else {
+				if (running &&
+					substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+					madifx_silence_playback(mfx);
+			}
 		} else {
-			if (running &&
-				substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+			if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 				madifx_silence_playback(mfx);
 		}
-	} else {
-		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
-			madifx_silence_playback(mfx);
-	}
 _ok:
-	snd_pcm_trigger_done(substream, substream);
-	if (!mfx->running && running)
-		madifx_start_audio(mfx);
-	else if (mfx->running && !running)
-		madifx_stop_audio(mfx);
-	mfx->running = running;
-	spin_unlock(&mfx->lock);
+		snd_pcm_trigger_done(substream, substream);
+		if (!mfx->running && running)
+			madifx_start_audio(mfx);
+		else if (mfx->running && !running)
+			madifx_stop_audio(mfx);
+		mfx->running = running;
+	}
 
 	return 0;
 }
@@ -2873,20 +2844,16 @@ static int snd_madifx_playback_open(struct snd_pcm_substream *substream)
 	struct mfx *mfx = snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
-	spin_lock_irq(&mfx->lock);
+	scoped_guard(spinlock_irq, &mfx->lock) {
+		snd_pcm_set_sync(substream);
+		runtime->hw = snd_madifx_playback_subinfo;
 
-	snd_pcm_set_sync(substream);
+		if (!mfx->capture_substream)
+			madifx_stop_audio(mfx);
 
-
-	runtime->hw = snd_madifx_playback_subinfo;
-
-	if (!mfx->capture_substream)
-		madifx_stop_audio(mfx);
-
-	mfx->playback_pid = current->pid;
-	mfx->playback_substream = substream;
-
-	spin_unlock_irq(&mfx->lock);
+		mfx->playback_pid = current->pid;
+		mfx->playback_substream = substream;
+	}
 
 	snd_pcm_hw_constraint_msbits(runtime, 0, 32, 24);
 	snd_pcm_hw_constraint_pow2(runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_SIZE);
@@ -2927,12 +2894,10 @@ static int snd_madifx_playback_release(struct snd_pcm_substream *substream)
 {
 	struct mfx *mfx = snd_pcm_substream_chip(substream);
 
-	spin_lock_irq(&mfx->lock);
+	guard(spinlock_irq)(&mfx->lock);
 
 	mfx->playback_pid = -1;
 	mfx->playback_substream = NULL;
-
-	spin_unlock_irq(&mfx->lock);
 
 	return 0;
 }
@@ -2943,17 +2908,16 @@ static int snd_madifx_capture_open(struct snd_pcm_substream *substream)
 	struct mfx *mfx = snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
-	spin_lock_irq(&mfx->lock);
-	snd_pcm_set_sync(substream);
-	runtime->hw = snd_madifx_capture_subinfo;
+	scoped_guard(spinlock_irq, &mfx->lock) {
+		snd_pcm_set_sync(substream);
+		runtime->hw = snd_madifx_capture_subinfo;
 
-	if (!mfx->playback_substream)
-		madifx_stop_audio(mfx);
+		if (!mfx->playback_substream)
+			madifx_stop_audio(mfx);
 
-	mfx->capture_pid = current->pid;
-	mfx->capture_substream = substream;
-
-	spin_unlock_irq(&mfx->lock);
+		mfx->capture_pid = current->pid;
+		mfx->capture_substream = substream;
+	}
 
 	snd_pcm_hw_constraint_msbits(runtime, 0, 32, 24);
 	snd_pcm_hw_constraint_pow2(runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_SIZE);
@@ -2994,12 +2958,11 @@ static int snd_madifx_capture_release(struct snd_pcm_substream *substream)
 {
 	struct mfx *mfx = snd_pcm_substream_chip(substream);
 
-	spin_lock_irq(&mfx->lock);
+	guard(spinlock_irq)(&mfx->lock);
 
 	mfx->capture_pid = -1;
 	mfx->capture_substream = NULL;
 
-	spin_unlock_irq(&mfx->lock);
 	return 0;
 }
 
@@ -3097,31 +3060,28 @@ static int snd_madifx_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
 	case SNDRV_MADIFX_IOCTL_GET_CONFIG:
 
 		memset(&info, 0, sizeof(info));
-		spin_lock_irq(&mfx->lock);
+		scoped_guard(spinlock_irq, &mfx->lock) {
+			for (i = 0; i < ARRAY_SIZE(info.madi_tx_64); i++) {
+				info.madi_tx_64[i] = madifx_read_toggle_setting(mfx,
+						(MADIFX_madi1_tx_64ch << i));
 
-		for (i = 0; i < ARRAY_SIZE(info.madi_tx_64); i++) {
-			info.madi_tx_64[i] = madifx_read_toggle_setting(mfx,
-					(MADIFX_madi1_tx_64ch << i));
+				info.madi_smux[i] = madifx_read_toggle_setting(mfx,
+						(MADIFX_madi1_smux << i));
+			}
 
-			info.madi_smux[i] = madifx_read_toggle_setting(mfx,
-					(MADIFX_madi1_smux << i));
+			info.wcterm = madifx_read_toggle_setting(mfx,
+					MADIFX_WCK_TERM);
+
+			info.wck48 = madifx_read_toggle_setting(mfx, MADIFX_WCK48);
+
+			info.aespro = madifx_read_toggle_setting(mfx, MADIFX_PRO);
+
+			info.redundancy_mode = madifx_read_toggle_setting(mfx,
+					MADIFX_redundancy_mode);
+
+			info.mirror_madi_out = madifx_read_toggle_setting(mfx,
+					MADIFX_mirror_madi_out);
 		}
-
-		info.wcterm = madifx_read_toggle_setting(mfx,
-				MADIFX_WCK_TERM);
-
-		info.wck48 = madifx_read_toggle_setting(mfx, MADIFX_WCK48);
-
-		info.aespro = madifx_read_toggle_setting(mfx, MADIFX_PRO);
-
-		info.redundancy_mode = madifx_read_toggle_setting(mfx,
-				MADIFX_redundancy_mode);
-
-		info.mirror_madi_out = madifx_read_toggle_setting(mfx,
-				MADIFX_mirror_madi_out);
-
-
-		spin_unlock_irq(&mfx->lock);
 		if (copy_to_user(argp, &info, sizeof(info)))
 			return -EFAULT;
 		break;
