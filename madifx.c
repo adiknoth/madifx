@@ -2844,18 +2844,16 @@ static int snd_madifx_playback_open(struct snd_pcm_substream *substream)
 	struct mfx *mfx = snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
-	guard(spinlock_irq)(&mfx->lock);
+	scoped_guard(spinlock_irq, &mfx->lock) {
+		snd_pcm_set_sync(substream);
+		runtime->hw = snd_madifx_playback_subinfo;
 
-	snd_pcm_set_sync(substream);
+		if (!mfx->capture_substream)
+			madifx_stop_audio(mfx);
 
-
-	runtime->hw = snd_madifx_playback_subinfo;
-
-	if (!mfx->capture_substream)
-		madifx_stop_audio(mfx);
-
-	mfx->playback_pid = current->pid;
-	mfx->playback_substream = substream;
+		mfx->playback_pid = current->pid;
+		mfx->playback_substream = substream;
+	}
 
 	snd_pcm_hw_constraint_msbits(runtime, 0, 32, 24);
 	snd_pcm_hw_constraint_pow2(runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_SIZE);
@@ -2910,15 +2908,16 @@ static int snd_madifx_capture_open(struct snd_pcm_substream *substream)
 	struct mfx *mfx = snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
-	guard(spinlock_irq)(&mfx->lock);
-	snd_pcm_set_sync(substream);
-	runtime->hw = snd_madifx_capture_subinfo;
+	scoped_guard(spinlock_irq, &mfx->lock) {
+		snd_pcm_set_sync(substream);
+		runtime->hw = snd_madifx_capture_subinfo;
 
-	if (!mfx->playback_substream)
-		madifx_stop_audio(mfx);
+		if (!mfx->playback_substream)
+			madifx_stop_audio(mfx);
 
-	mfx->capture_pid = current->pid;
-	mfx->capture_substream = substream;
+		mfx->capture_pid = current->pid;
+		mfx->capture_substream = substream;
+	}
 
 	snd_pcm_hw_constraint_msbits(runtime, 0, 32, 24);
 	snd_pcm_hw_constraint_pow2(runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_SIZE);
