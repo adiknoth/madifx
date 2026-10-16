@@ -18,6 +18,10 @@ problems and patches to improve the driver.
 
 ## NEWS
 
+* 2026-10-16: The current master requires a recent kernel (it uses
+  `timer_container_of()`, available since Linux 6.16). For older kernels,
+  such as 6.12 on Debian 13 (Trixie), use the older revision, see
+  [Installation](#installation).
 * 2025-05-17: Add information on driver signing.
 * 2025-05-17: Update driver source to compile on 6.12+ kernels.
 * 2021-08-16: Update driver source to compile on 5.12+ kernels.
@@ -28,7 +32,21 @@ problems and patches to improve the driver.
 
 ## Installation
 
-Clone this repository. If you're on a CentOS kernel, don't patch anything.
+Clone this repository.
+
+**Kernels older than 6.16** (e.g. Debian 13 "Trixie" with 6.12) fail to build
+the current master with `implicit declaration of function 'timer_container_of'`.
+Use the last revision that supports them:
+
+```
+   git reset --hard 3a4e428fdfac53602778e6111f94e6f80e885226
+```
+
+(or download the
+[zip](https://github.com/adiknoth/madifx/archive/3a4e428fdfac53602778e6111f94e6f80e885226.zip)
+of that revision).
+
+If you're on a CentOS kernel, don't patch anything.
 CentOS backports the new audio stack to their old kernels.
 
 For all kernels before 4.15, run
